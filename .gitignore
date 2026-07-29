@@ -1,0 +1,17 @@
+build/
+reports/
+sim/*.vcd
+sim/*.fst
+sim/*.log
+*.vvp
+*.o
+*.d
+*.so
+*.pyc
+__pycache__/
+obj_dir/
+.cache/
+runs/
+*.jou
+*.log
+*.pb

@@ -15,3 +15,5 @@ runs/
 *.jou
 *.log
 *.pb
+flow/*/runs/
+flow/*/harden.log

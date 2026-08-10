@@ -23,7 +23,6 @@
 // -----------------------------------------------------------------------------
 
 module nce_tfln_deserializer
-    import nce_tfln_pkg::*;
 (
     input  logic                       clk_i,
     input  logic                       rst_ni,
@@ -31,12 +30,12 @@ module nce_tfln_deserializer
     input  logic                       serial_i,
 
     output logic                       frame_valid_o,
-    output logic [TFLN_FRAME_BITS-1:0] frame_o,
+    output logic [nce_tfln_pkg::TFLN_FRAME_BITS-1:0] frame_o,
     output logic                       crc_error_o
 );
 
     localparam int unsigned PAYLOAD_BITS =
-        TFLN_FRAME_BITS - TFLN_SYNC_BITS;
+        nce_tfln_pkg::TFLN_FRAME_BITS - nce_tfln_pkg::TFLN_SYNC_BITS;
 
     localparam int unsigned COUNT_WIDTH = $clog2(PAYLOAD_BITS + 1);
 
@@ -46,29 +45,29 @@ module nce_tfln_deserializer
     } state_e;
 
     state_e                     state_q;
-    logic [TFLN_FRAME_BITS-1:0] shift_q;
+    logic [nce_tfln_pkg::TFLN_FRAME_BITS-1:0] shift_q;
     logic [COUNT_WIDTH-1:0]     received_q;
 
-    logic [TFLN_FRAME_BITS-1:0] shift_next;
-    logic [TFLN_CRC_COVER_BITS-1:0] covered;
-    logic [TFLN_CRC_BITS-1:0]       crc_received;
+    logic [nce_tfln_pkg::TFLN_FRAME_BITS-1:0] shift_next;
+    logic [nce_tfln_pkg::TFLN_CRC_COVER_BITS-1:0] covered;
+    logic [nce_tfln_pkg::TFLN_CRC_BITS-1:0]       crc_received;
     logic                           crc_ok;
 
-    assign shift_next = {shift_q[TFLN_FRAME_BITS-2:0], serial_i};
+    assign shift_next = {shift_q[nce_tfln_pkg::TFLN_FRAME_BITS-2:0], serial_i};
 
     // Once the final bit has shifted in, the frame sits left-aligned in the
     // shift register with SYNC back at the top.
-    assign covered      = shift_next[TFLN_CRC_COVER_BITS+TFLN_CRC_BITS-1:TFLN_CRC_BITS];
-    assign crc_received = shift_next[TFLN_CRC_BITS-1:0];
-    assign crc_ok       = (tfln_crc8(covered) == crc_received);
+    assign covered      = shift_next[nce_tfln_pkg::TFLN_CRC_COVER_BITS+nce_tfln_pkg::TFLN_CRC_BITS-1:nce_tfln_pkg::TFLN_CRC_BITS];
+    assign crc_received = shift_next[nce_tfln_pkg::TFLN_CRC_BITS-1:0];
+    assign crc_ok       = (nce_tfln_pkg::tfln_crc8(covered) == crc_received);
 
     always_ff @(posedge clk_i or negedge rst_ni) begin
         if (!rst_ni) begin
             state_q       <= STATE_HUNT;
-            shift_q       <= {TFLN_FRAME_BITS{1'b0}};
+            shift_q       <= {nce_tfln_pkg::TFLN_FRAME_BITS{1'b0}};
             received_q    <= {COUNT_WIDTH{1'b0}};
             frame_valid_o <= 1'b0;
-            frame_o       <= {TFLN_FRAME_BITS{1'b0}};
+            frame_o       <= {nce_tfln_pkg::TFLN_FRAME_BITS{1'b0}};
             crc_error_o   <= 1'b0;
         end
         else begin
@@ -78,7 +77,7 @@ module nce_tfln_deserializer
 
             unique case (state_q)
                 STATE_HUNT: begin
-                    if (shift_next[TFLN_SYNC_BITS-1:0] == TFLN_SYNC) begin
+                    if (shift_next[nce_tfln_pkg::TFLN_SYNC_BITS-1:0] == nce_tfln_pkg::TFLN_SYNC) begin
                         state_q    <= STATE_RECV;
                         received_q <= {COUNT_WIDTH{1'b0}};
                     end

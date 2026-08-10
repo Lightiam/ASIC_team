@@ -19,22 +19,21 @@
 // -----------------------------------------------------------------------------
 
 module nce_tfln_serializer
-    import nce_tfln_pkg::*;
 (
     input  logic                       clk_i,
     input  logic                       rst_ni,
 
     input  logic                       frame_valid_i,
     output logic                       frame_ready_o,
-    input  logic [TFLN_FRAME_BITS-1:0] frame_i,
+    input  logic [nce_tfln_pkg::TFLN_FRAME_BITS-1:0] frame_i,
 
     output logic                       serial_o,
     output logic                       busy_o
 );
 
-    localparam int unsigned COUNT_WIDTH = $clog2(TFLN_FRAME_BITS + 1);
+    localparam int unsigned COUNT_WIDTH = $clog2(nce_tfln_pkg::TFLN_FRAME_BITS + 1);
 
-    logic [TFLN_FRAME_BITS-1:0] shift_q;
+    logic [nce_tfln_pkg::TFLN_FRAME_BITS-1:0] shift_q;
     logic [COUNT_WIDTH-1:0]     remaining_q;
     logic                       busy_q;
 
@@ -44,24 +43,24 @@ module nce_tfln_serializer
     // Idle low so the receiver's sync hunt cannot latch onto dead air.
     assign serial_o =
         busy_q
-        ? shift_q[TFLN_FRAME_BITS-1]
+        ? shift_q[nce_tfln_pkg::TFLN_FRAME_BITS-1]
         : 1'b0;
 
     always_ff @(posedge clk_i or negedge rst_ni) begin
         if (!rst_ni) begin
-            shift_q     <= {TFLN_FRAME_BITS{1'b0}};
+            shift_q     <= {nce_tfln_pkg::TFLN_FRAME_BITS{1'b0}};
             remaining_q <= {COUNT_WIDTH{1'b0}};
             busy_q      <= 1'b0;
         end
         else if (!busy_q) begin
             if (frame_valid_i) begin
                 shift_q     <= frame_i;
-                remaining_q <= COUNT_WIDTH'(TFLN_FRAME_BITS);
+                remaining_q <= COUNT_WIDTH'(nce_tfln_pkg::TFLN_FRAME_BITS);
                 busy_q      <= 1'b1;
             end
         end
         else begin
-            shift_q <= {shift_q[TFLN_FRAME_BITS-2:0], 1'b0};
+            shift_q <= {shift_q[nce_tfln_pkg::TFLN_FRAME_BITS-2:0], 1'b0};
 
             if (remaining_q == COUNT_WIDTH'(1)) begin
                 busy_q      <= 1'b0;

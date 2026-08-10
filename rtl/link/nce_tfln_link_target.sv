@@ -22,7 +22,6 @@
 // -----------------------------------------------------------------------------
 
 module nce_tfln_link_target
-    import nce_tfln_pkg::*;
 (
     input  logic         clk_i,
     input  logic         rst_ni,
@@ -68,11 +67,11 @@ module nce_tfln_link_target
 
     logic                       tx_frame_valid;
     logic                       tx_frame_ready;
-    logic [TFLN_FRAME_BITS-1:0] tx_frame;
+    logic [nce_tfln_pkg::TFLN_FRAME_BITS-1:0] tx_frame;
     logic                       tx_busy;
 
     logic                       rx_frame_valid;
-    logic [TFLN_FRAME_BITS-1:0] rx_frame;
+    logic [nce_tfln_pkg::TFLN_FRAME_BITS-1:0] rx_frame;
     logic                       rx_crc_error;
 
     nce_tfln_serializer u_serializer (
@@ -106,11 +105,11 @@ module nce_tfln_link_target
     logic [31:0] request_addr;
     logic [31:0] request_data;
 
-    assign request_is_response = rx_frame[TFLN_CTRL_LSB + TFLN_CTRL_RESPONSE];
-    assign request_is_write    = rx_frame[TFLN_CTRL_LSB + TFLN_CTRL_WRITE];
-    assign request_strb        = rx_frame[TFLN_STRB_LSB +: 4];
-    assign request_addr        = rx_frame[TFLN_ADDR_LSB +: 32];
-    assign request_data        = rx_frame[TFLN_DATA_LSB +: 32];
+    assign request_is_response = rx_frame[nce_tfln_pkg::TFLN_CTRL_LSB + nce_tfln_pkg::TFLN_CTRL_RESPONSE];
+    assign request_is_write    = rx_frame[nce_tfln_pkg::TFLN_CTRL_LSB + nce_tfln_pkg::TFLN_CTRL_WRITE];
+    assign request_strb        = rx_frame[nce_tfln_pkg::TFLN_STRB_LSB +: 4];
+    assign request_addr        = rx_frame[nce_tfln_pkg::TFLN_ADDR_LSB +: 32];
+    assign request_data        = rx_frame[nce_tfln_pkg::TFLN_DATA_LSB +: 32];
 
     // -------------------------------------------------------------------------
     // Transaction sequencing
@@ -167,7 +166,7 @@ module nce_tfln_link_target
             is_write_q     <= 1'b0;
             aw_done_q      <= 1'b0;
             w_done_q       <= 1'b0;
-            tx_frame       <= {TFLN_FRAME_BITS{1'b0}};
+            tx_frame       <= {nce_tfln_pkg::TFLN_FRAME_BITS{1'b0}};
             link_dropped_o <= 1'b0;
         end
         else begin
@@ -220,7 +219,7 @@ module nce_tfln_link_target
 
                         // Built on the transition so the frame is already
                         // stable when STATE_RESPOND raises frame_valid.
-                        tx_frame <= tfln_pack(
+                        tx_frame <= nce_tfln_pkg::tfln_pack(
                             1'b1,
                             is_write_q,
                             m_axi_bresp_i[1],
@@ -244,7 +243,7 @@ module nce_tfln_link_target
                         result_q <= m_axi_rdata_i;
                         error_q  <= m_axi_rresp_i[1];
 
-                        tx_frame <= tfln_pack(
+                        tx_frame <= nce_tfln_pkg::tfln_pack(
                             1'b1,
                             is_write_q,
                             m_axi_rresp_i[1],

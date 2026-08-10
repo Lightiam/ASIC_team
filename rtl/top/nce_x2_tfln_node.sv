@@ -53,7 +53,12 @@ module nce_x2_tfln_node #(
     parameter int unsigned RESPONSE_TIMEOUT = 4096,
 
     // Connect the optical lanes internally (ideal PIC) when set.
-    parameter bit PIC_LOOPBACK = 1'b1
+    parameter bit PIC_LOOPBACK = 1'b1,
+
+    // Which NCE variant occupies each die site. The INT8 core is small enough
+    // that both dies can be placed and routed together; see
+    // rtl/top/nce_x2_core_wrapper.sv.
+    parameter bit USE_INT8_CORE = 1'b1
 ) (
     input  logic         clk_i,
     input  logic         rst_ni,
@@ -287,7 +292,9 @@ module nce_x2_tfln_node #(
         .m_axi_rready_o  (a_rready)
     );
 
-    nce_axi_mixed_precision_top u_die_a (
+    nce_x2_core_wrapper #(
+        .USE_INT8_CORE (USE_INT8_CORE)
+    ) u_die_a (
         .clk_i           (clk_i),
         .rst_ni          (rst_ni),
 
@@ -423,7 +430,9 @@ module nce_x2_tfln_node #(
         .link_dropped_o   (link_dropped_o)
     );
 
-    nce_axi_mixed_precision_top u_die_b (
+    nce_x2_core_wrapper #(
+        .USE_INT8_CORE (USE_INT8_CORE)
+    ) u_die_b (
         .clk_i           (clk_i),
         .rst_ni          (rst_ni),
 

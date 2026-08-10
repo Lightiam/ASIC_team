@@ -26,7 +26,6 @@
 // -----------------------------------------------------------------------------
 
 module nce_tfln_link_initiator
-    import nce_tfln_pkg::*;
 #(
     parameter int unsigned RESPONSE_TIMEOUT = 4096
 ) (
@@ -92,11 +91,11 @@ module nce_tfln_link_initiator
 
     logic                       tx_frame_valid;
     logic                       tx_frame_ready;
-    logic [TFLN_FRAME_BITS-1:0] tx_frame;
+    logic [nce_tfln_pkg::TFLN_FRAME_BITS-1:0] tx_frame;
     logic                       tx_busy;
 
     logic                       rx_frame_valid;
-    logic [TFLN_FRAME_BITS-1:0] rx_frame;
+    logic [nce_tfln_pkg::TFLN_FRAME_BITS-1:0] rx_frame;
     logic                       rx_crc_error;
 
     nce_tfln_serializer u_serializer (
@@ -139,13 +138,13 @@ module nce_tfln_link_initiator
     logic [31:0] response_data;
 
     assign response_is_response =
-        rx_frame[TFLN_CTRL_LSB + TFLN_CTRL_RESPONSE];
+        rx_frame[nce_tfln_pkg::TFLN_CTRL_LSB + nce_tfln_pkg::TFLN_CTRL_RESPONSE];
 
     assign response_error =
-        rx_frame[TFLN_CTRL_LSB + TFLN_CTRL_ERROR];
+        rx_frame[nce_tfln_pkg::TFLN_CTRL_LSB + nce_tfln_pkg::TFLN_CTRL_ERROR];
 
     assign response_data =
-        rx_frame[TFLN_DATA_LSB +: 32];
+        rx_frame[nce_tfln_pkg::TFLN_DATA_LSB +: 32];
 
     assign link_busy_o = (state_q != STATE_IDLE);
 
@@ -183,7 +182,7 @@ module nce_tfln_link_initiator
             state_q            <= STATE_IDLE;
             pending_is_write_q <= 1'b0;
             timeout_q          <= {TIMEOUT_WIDTH{1'b0}};
-            tx_frame           <= {TFLN_FRAME_BITS{1'b0}};
+            tx_frame           <= {nce_tfln_pkg::TFLN_FRAME_BITS{1'b0}};
             link_timeout_o     <= 1'b0;
         end
         else begin
@@ -198,7 +197,7 @@ module nce_tfln_link_initiator
                     if (backend_write_valid) begin
                         pending_is_write_q <= 1'b1;
 
-                        tx_frame <= tfln_pack(
+                        tx_frame <= nce_tfln_pkg::tfln_pack(
                             1'b0,
                             1'b1,
                             1'b0,
@@ -212,7 +211,7 @@ module nce_tfln_link_initiator
                     else if (backend_read_valid) begin
                         pending_is_write_q <= 1'b0;
 
-                        tx_frame <= tfln_pack(
+                        tx_frame <= nce_tfln_pkg::tfln_pack(
                             1'b0,
                             1'b0,
                             1'b0,

@@ -1,0 +1,55 @@
+# Tiny Tapeout project information
+project:
+  title:        "NCE Neural Compute Engine"
+  author:       "Talha Alam & Bola Olatunji (ASIC Team)"
+  discord:      ""
+  description:  "High-Efficiency INT8 Dot-Product Accelerator with INT32/FP32 Accumulation and Direct-Strobed Register Port"
+  language:     "SystemVerilog"
+  clock_hz:     33333333
+
+# How many tiles your design occupies? A single tile is about 167x108 uM.
+  tiles: "3x2"
+
+# Your top module name must start with "tt_um_" and should match the name of this repo:
+  top_module:  "tt_um_nce_neural_engine"
+
+# List your sources here:
+  source_files:
+    - "rtl/core/nce_int8_int32_mac_lane.sv"
+    - "rtl/core/nce_int32_to_fp32.sv"
+    - "rtl/top/tt_um_nce_neural_engine.sv"
+
+# The pinout of your project.
+pinout:
+  # Inputs
+  ui[0]: "ui_in[0]: Address or Data byte bit 0"
+  ui[1]: "ui_in[1]: Address or Data byte bit 1"
+  ui[2]: "ui_in[2]: Address or Data byte bit 2"
+  ui[3]: "ui_in[3]: Address or Data byte bit 3"
+  ui[4]: "ui_in[4]: Address or Data byte bit 4"
+  ui[5]: "ui_in[5]: Address or Data byte bit 5"
+  ui[6]: "ui_in[6]: Address or Data byte bit 6"
+  ui[7]: "ui_in[7]: Address or Data byte bit 7"
+
+  # Outputs
+  uo[0]: "uo_out[0]: Read Data byte bit 0"
+  uo[1]: "uo_out[1]: Read Data byte bit 1"
+  uo[2]: "uo_out[2]: Read Data byte bit 2"
+  uo[3]: "uo_out[3]: Read Data byte bit 3"
+  uo[4]: "uo_out[4]: Read Data byte bit 4"
+  uo[5]: "uo_out[5]: Read Data byte bit 5"
+  uo[6]: "uo_out[6]: Read Data byte bit 6"
+  uo[7]: "uo_out[7]: Read Data byte bit 7"
+
+  # Bidirectional pins
+  uio[0]: "uio[0]: strobe input pulse"
+  uio[1]: "uio[1]: is_write (1=Write, 0=Read)"
+  uio[2]: "uio[2]: addr_load (1=Load Address, 0=Data Transfer)"
+  uio[3]: "uio[3]: start_exec (1=Execute compute command)"
+  uio[4]: "uio[4]: ready status output"
+  uio[5]: "uio[5]: valid read data status output"
+  uio[6]: "uio[6]: busy compute active output"
+  uio[7]: "uio[7]: done compute complete output"
+
+# Do not change!
+yaml_version: 6

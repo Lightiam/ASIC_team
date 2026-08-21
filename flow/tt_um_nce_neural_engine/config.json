@@ -1,0 +1,23 @@
+{
+  "DESIGN_NAME": "tt_um_nce_neural_engine",
+  "VERILOG_FILES": [
+    "dir::../../rtl/core/nce_int8_int32_mac_lane.sv",
+    "dir::../../rtl/core/nce_int32_to_fp32.sv",
+    "dir::../../rtl/top/tt_um_nce_neural_engine.sv"
+  ],
+  "CLOCK_PORT": "clk",
+  "CLOCK_PERIOD": 30.0,
+  "PDK": "sky130A",
+  "STD_CELL_LIBRARY": "sky130_fd_sc_hd",
+  "FP_SIZING": "absolute",
+  "DIE_AREA": "0 0 508.76 225.76",
+  "CORE_AREA": "10 10 498.76 215.76",
+  "FP_PIN_ORDER_CFG": "dir::pin_order.cfg",
+  "FP_CORE_UTIL": 40,
+  "PL_TARGET_DENSITY_PCT": 48,
+  "GRT_ALLOW_CONGESTION": true,
+  "RUN_LINTER": false,
+  "RUN_MAGIC_DRC": true,
+  "RUN_KLAYOUT_DRC": true,
+  "RUN_NETGEN_LVS": true
+}

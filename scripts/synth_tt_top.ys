@@ -1,0 +1,18 @@
+read_verilog -sv rtl/core/nce_int8_int32_mac_lane.sv
+read_verilog -sv rtl/core/nce_int32_to_fp32.sv
+read_verilog -sv rtl/top/tt_um_nce_neural_engine.sv
+
+hierarchy -check -top tt_um_nce_neural_engine
+proc
+opt
+fsm
+opt
+memory
+opt
+techmap
+opt
+dfflibmap -liberty /foss/pdks/sky130A/libs.ref/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib
+abc -liberty /foss/pdks/sky130A/libs.ref/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib
+clean
+stat -liberty /foss/pdks/sky130A/libs.ref/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib
+write_verilog -noattr -noexpr reports/tt_um_nce_neural_engine_synth.v

@@ -17,3 +17,7 @@ runs/
 *.pb
 flow/*/runs/
 flow/*/harden.log
+
+# Large GDS layouts are built by Tiny Tapeout CI, not committed
+GDSII/
+*.gds

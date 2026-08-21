@@ -1,0 +1,29 @@
+# Yosys synthesis script for 8-lane SIMD MAC technology mapping to SkyWater SKY130
+read_verilog -sv rtl/pkg/nce_pkg.sv
+read_verilog -sv rtl/core/nce_int8_dot4.sv
+read_verilog -sv rtl/core/nce_int18_to_fp32.sv
+read_verilog -sv rtl/core/nce_int8_dot4_fp32.sv
+read_verilog -sv rtl/core/nce_fp32_decode.sv
+read_verilog -sv rtl/core/nce_fp32_align.sv
+read_verilog -sv rtl/core/nce_fp32_addsub_raw.sv
+read_verilog -sv rtl/core/nce_fp32_normalize.sv
+read_verilog -sv rtl/core/nce_fp32_round_pack.sv
+read_verilog -sv rtl/core/nce_fp32_add.sv
+read_verilog -sv rtl/core/nce_fp32_add_special.sv
+read_verilog -sv rtl/core/nce_fp32_accumulator.sv
+read_verilog -sv rtl/core/nce_int8_mac_lane.sv
+read_verilog -sv rtl/core/nce_int8_simd8_mac.sv
+
+hierarchy -check -top nce_int8_simd8_mac
+proc
+opt
+fsm
+opt
+memory
+opt
+techmap
+opt
+dfflibmap -liberty /work/sky130_fd_sc_hd__tt_025C_1v80.lib
+abc -liberty /work/sky130_fd_sc_hd__tt_025C_1v80.lib
+clean
+stat -liberty /work/sky130_fd_sc_hd__tt_025C_1v80.lib

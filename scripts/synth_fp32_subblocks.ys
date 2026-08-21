@@ -1,0 +1,78 @@
+# Synthesize and measure sub-blocks of the FP32 datapath and compare with INT32 accumulator
+read_verilog -sv rtl/nce_pkg.sv
+read_verilog -sv rtl/nce_int8_dot4.sv
+hierarchy -check -top nce_int8_dot4
+proc; opt; fsm; opt; memory; opt; techmap; opt
+dfflibmap -liberty /work/sky130_fd_sc_hd__tt_025C_1v80.lib
+abc -liberty /work/sky130_fd_sc_hd__tt_025C_1v80.lib
+clean
+stat -liberty /work/sky130_fd_sc_hd__tt_025C_1v80.lib
+
+read_verilog -sv rtl/nce_pkg.sv
+read_verilog -sv rtl/nce_int18_to_fp32.sv
+hierarchy -check -top nce_int18_to_fp32
+proc; opt; fsm; opt; memory; opt; techmap; opt
+dfflibmap -liberty /work/sky130_fd_sc_hd__tt_025C_1v80.lib
+abc -liberty /work/sky130_fd_sc_hd__tt_025C_1v80.lib
+clean
+stat -liberty /work/sky130_fd_sc_hd__tt_025C_1v80.lib
+
+read_verilog -sv rtl/nce_pkg.sv
+read_verilog -sv rtl/nce_fp32_decode.sv
+hierarchy -check -top nce_fp32_decode
+proc; opt; fsm; opt; memory; opt; techmap; opt
+dfflibmap -liberty /work/sky130_fd_sc_hd__tt_025C_1v80.lib
+abc -liberty /work/sky130_fd_sc_hd__tt_025C_1v80.lib
+clean
+stat -liberty /work/sky130_fd_sc_hd__tt_025C_1v80.lib
+
+read_verilog -sv rtl/nce_pkg.sv
+read_verilog -sv rtl/nce_fp32_align.sv
+hierarchy -check -top nce_fp32_align
+proc; opt; fsm; opt; memory; opt; techmap; opt
+dfflibmap -liberty /work/sky130_fd_sc_hd__tt_025C_1v80.lib
+abc -liberty /work/sky130_fd_sc_hd__tt_025C_1v80.lib
+clean
+stat -liberty /work/sky130_fd_sc_hd__tt_025C_1v80.lib
+
+read_verilog -sv rtl/nce_pkg.sv
+read_verilog -sv rtl/nce_fp32_addsub_raw.sv
+hierarchy -check -top nce_fp32_addsub_raw
+proc; opt; fsm; opt; memory; opt; techmap; opt
+dfflibmap -liberty /work/sky130_fd_sc_hd__tt_025C_1v80.lib
+abc -liberty /work/sky130_fd_sc_hd__tt_025C_1v80.lib
+clean
+stat -liberty /work/sky130_fd_sc_hd__tt_025C_1v80.lib
+
+read_verilog -sv rtl/nce_pkg.sv
+read_verilog -sv rtl/nce_fp32_normalize.sv
+hierarchy -check -top nce_fp32_normalize
+proc; opt; fsm; opt; memory; opt; techmap; opt
+dfflibmap -liberty /work/sky130_fd_sc_hd__tt_025C_1v80.lib
+abc -liberty /work/sky130_fd_sc_hd__tt_025C_1v80.lib
+clean
+stat -liberty /work/sky130_fd_sc_hd__tt_025C_1v80.lib
+
+read_verilog -sv rtl/nce_pkg.sv
+read_verilog -sv rtl/nce_fp32_round_pack.sv
+hierarchy -check -top nce_fp32_round_pack
+proc; opt; fsm; opt; memory; opt; techmap; opt
+dfflibmap -liberty /work/sky130_fd_sc_hd__tt_025C_1v80.lib
+abc -liberty /work/sky130_fd_sc_hd__tt_025C_1v80.lib
+clean
+stat -liberty /work/sky130_fd_sc_hd__tt_025C_1v80.lib
+
+read_verilog -sv rtl/nce_pkg.sv
+read_verilog -sv rtl/nce_fp32_decode.sv
+read_verilog -sv rtl/nce_fp32_align.sv
+read_verilog -sv rtl/nce_fp32_addsub_raw.sv
+read_verilog -sv rtl/nce_fp32_normalize.sv
+read_verilog -sv rtl/nce_fp32_round_pack.sv
+read_verilog -sv rtl/nce_fp32_add.sv
+read_verilog -sv rtl/nce_fp32_add_special.sv
+hierarchy -check -top nce_fp32_add_special
+proc; opt; fsm; opt; memory; opt; techmap; opt
+dfflibmap -liberty /work/sky130_fd_sc_hd__tt_025C_1v80.lib
+abc -liberty /work/sky130_fd_sc_hd__tt_025C_1v80.lib
+clean
+stat -liberty /work/sky130_fd_sc_hd__tt_025C_1v80.lib

@@ -1,0 +1,71 @@
+# Tiny Tapeout Project Information
+project:
+  title:        "NCE Neural Compute Engine (Tiny Tapeout Edition)"
+  author:       "Talha Alam & Bola Olatunji (ASIC Team)"
+  discord:      ""
+  description:  "8-Lane SIMD INT8 DOT4 to FP32 Neural Accelerator with AXI4-Lite CSR Backend"
+  language:     "SystemVerilog"
+  clock_hz:     33333333
+
+# How many tiles your design occupies? A standard tile is 160x100 um
+# For the 8-lane SIMD INT8 engine with FP32 accumulator: 3x2 tiles
+tiles: "3x2"
+
+# Top module name
+top_module: "tt_um_nce_neural_engine"
+
+# List your sources
+source_files:
+  - "rtl/pkg/nce_pkg.sv"
+  - "rtl/core/nce_int8_dot4.sv"
+  - "rtl/core/nce_int18_to_fp32.sv"
+  - "rtl/core/nce_int8_dot4_fp32.sv"
+  - "rtl/core/nce_int8_mac_lane.sv"
+  - "rtl/core/nce_int8_simd8_mac.sv"
+  - "rtl/core/nce_fp32_decode.sv"
+  - "rtl/core/nce_fp32_align.sv"
+  - "rtl/core/nce_fp32_addsub_raw.sv"
+  - "rtl/core/nce_fp32_normalize.sv"
+  - "rtl/core/nce_fp32_round_pack.sv"
+  - "rtl/core/nce_fp32_add.sv"
+  - "rtl/core/nce_fp32_add_special.sv"
+  - "rtl/core/nce_fp32_accumulator.sv"
+  - "rtl/memory/nce_regfile_16x256.sv"
+  - "rtl/control/nce_int8_command_decoder.sv"
+  - "rtl/core/nce_int8_command_core.sv"
+  - "rtl/bus/nce_axi4lite_frontend.sv"
+  - "rtl/bus/nce_axi_csr_backend.sv"
+  - "rtl/top/nce_axi_int8_top.sv"
+  - "rtl/top/tt_um_nce_neural_engine.sv"
+
+# Pinout documentation
+pinout:
+  # Dedicated inputs
+  ui[0]: "Input data byte bit 0 / Address byte bit 0"
+  ui[1]: "Input data byte bit 1 / Address byte bit 1"
+  ui[2]: "Input data byte bit 2 / Address byte bit 2"
+  ui[3]: "Input data byte bit 3 / Address byte bit 3"
+  ui[4]: "Input data byte bit 4 / Address byte bit 4"
+  ui[5]: "Input data byte bit 5 / Address byte bit 5"
+  ui[6]: "Input data byte bit 6 / Address byte bit 6"
+  ui[7]: "Input data byte bit 7 / Address byte bit 7"
+
+  # Dedicated outputs
+  uo[0]: "Output readback data bit 0 / status bit 0"
+  uo[1]: "Output readback data bit 1 / status bit 1"
+  uo[2]: "Output readback data bit 2"
+  uo[3]: "Output readback data bit 3"
+  uo[4]: "Output readback data bit 4"
+  uo[5]: "Output readback data bit 5"
+  uo[6]: "Output readback data bit 6"
+  uo[7]: "Output readback data bit 7"
+
+  # Bidirectional IOs
+  uio[0]: "cmd_valid (Input): Strobe current input byte"
+  uio[1]: "is_write (Input): 1 = Write, 0 = Read"
+  uio[2]: "resp_ack (Input): Master acknowledge output byte"
+  uio[3]: "Reserved (Input)"
+  uio[4]: "cmd_ready (Output): Ready to accept next byte"
+  uio[5]: "resp_valid (Output): Output byte is valid"
+  uio[6]: "engine_busy (Output): Execution active"
+  uio[7]: "engine_done (Output): Execution completed"

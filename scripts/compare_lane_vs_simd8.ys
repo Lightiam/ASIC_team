@@ -1,0 +1,44 @@
+# Compare 1-Lane MAC vs 8-Lane SIMD MAC synthesis statistics
+
+read_verilog -sv rtl/pkg/nce_pkg.sv
+read_verilog -sv rtl/core/nce_int8_dot4.sv
+read_verilog -sv rtl/core/nce_int18_to_fp32.sv
+read_verilog -sv rtl/core/nce_int8_dot4_fp32.sv
+read_verilog -sv rtl/core/nce_fp32_decode.sv
+read_verilog -sv rtl/core/nce_fp32_align.sv
+read_verilog -sv rtl/core/nce_fp32_addsub_raw.sv
+read_verilog -sv rtl/core/nce_fp32_normalize.sv
+read_verilog -sv rtl/core/nce_fp32_round_pack.sv
+read_verilog -sv rtl/core/nce_fp32_add.sv
+read_verilog -sv rtl/core/nce_fp32_add_special.sv
+read_verilog -sv rtl/core/nce_fp32_accumulator.sv
+read_verilog -sv rtl/core/nce_int8_mac_lane.sv
+read_verilog -sv rtl/core/nce_int8_simd8_mac.sv
+
+# 1. Synthesize Single Lane
+design -save initial
+hierarchy -check -top nce_int8_mac_lane
+proc
+opt
+memory
+opt
+techmap
+opt
+dfflibmap -liberty /foss/pdks/ciel/sky130/versions/f6eeac7dad085ffcc829ccfd721f7b4ce39edcf7/sky130A/libs.ref/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib
+abc -liberty /foss/pdks/ciel/sky130/versions/f6eeac7dad085ffcc829ccfd721f7b4ce39edcf7/sky130A/libs.ref/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib
+clean
+stat -liberty /foss/pdks/ciel/sky130/versions/f6eeac7dad085ffcc829ccfd721f7b4ce39edcf7/sky130A/libs.ref/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib
+
+# 2. Synthesize SIMD8 MAC
+design -load initial
+hierarchy -check -top nce_int8_simd8_mac
+proc
+opt
+memory
+opt
+techmap
+opt
+dfflibmap -liberty /foss/pdks/ciel/sky130/versions/f6eeac7dad085ffcc829ccfd721f7b4ce39edcf7/sky130A/libs.ref/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib
+abc -liberty /foss/pdks/ciel/sky130/versions/f6eeac7dad085ffcc829ccfd721f7b4ce39edcf7/sky130A/libs.ref/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib
+clean
+stat -liberty /foss/pdks/ciel/sky130/versions/f6eeac7dad085ffcc829ccfd721f7b4ce39edcf7/sky130A/libs.ref/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib

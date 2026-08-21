@@ -1,0 +1,18 @@
+# Yosys synthesis script for AXI4-Lite Frontend and CSR Backend technology mapping
+read_verilog -sv rtl/pkg/nce_pkg.sv
+read_verilog -sv rtl/bus/nce_axi4lite_frontend.sv
+hierarchy -check -top nce_axi4lite_frontend
+proc; opt; fsm; opt; memory; opt; techmap; opt
+dfflibmap -liberty /work/sky130_fd_sc_hd__tt_025C_1v80.lib
+abc -liberty /work/sky130_fd_sc_hd__tt_025C_1v80.lib
+clean
+stat -liberty /work/sky130_fd_sc_hd__tt_025C_1v80.lib
+
+read_verilog -sv rtl/pkg/nce_pkg.sv
+read_verilog -sv rtl/bus/nce_axi_csr_backend.sv
+hierarchy -check -top nce_axi_csr_backend
+proc; opt; fsm; opt; memory; opt; techmap; opt
+dfflibmap -liberty /work/sky130_fd_sc_hd__tt_025C_1v80.lib
+abc -liberty /work/sky130_fd_sc_hd__tt_025C_1v80.lib
+clean
+stat -liberty /work/sky130_fd_sc_hd__tt_025C_1v80.lib

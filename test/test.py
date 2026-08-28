@@ -26,6 +26,14 @@ from cocotb.triggers import ClockCycles, RisingEdge, Timer
 # 33.333 MHz, matching clock_hz in info.yaml
 CLK_PERIOD_NS = 30
 
+# Every transfer is followed by one idle clock, and outputs are sampled
+# SETTLE_NS into that idle clock. At RTL this is only cosmetic, but the
+# gate-level netlist is compiled with UNIT_DELAY=#1, so the combinational
+# read mux from the address pointer to uo_out takes many nanoseconds to
+# resolve. Sampling immediately after the clock edge would latch a value
+# that is still propagating.
+SETTLE_NS = 5
+
 # uio_in control bits
 STROBE = 1 << 0
 IS_WRITE = 1 << 1
@@ -69,6 +77,20 @@ ST_OVERFLOW = 1 << 3
 # Bus helpers
 # ---------------------------------------------------------------------------
 
+def resolved(signal, name):
+    """Read a signal as an integer, failing loudly if it still holds x/z.
+
+    Gate-level runs can leave outputs unresolved if the testbench samples
+    too early or reset was too short; this turns an opaque conversion
+    error into a readable assertion.
+    """
+    value = signal.value
+    try:
+        return int(value)
+    except Exception:
+        raise AssertionError(f"{name} is not fully resolved: {value!r}")
+
+
 async def start_and_reset(dut):
     """Start the clock and bring the DUT out of reset."""
     cocotb.start_soon(Clock(dut.clk, CLK_PERIOD_NS, unit="ns").start())
@@ -77,19 +99,26 @@ async def start_and_reset(dut):
     dut.ui_in.value = 0
     dut.uio_in.value = 0
     dut.rst_n.value = 0
-    await ClockCycles(dut.clk, 5)
+    await ClockCycles(dut.clk, 10)
     dut.rst_n.value = 1
-    await ClockCycles(dut.clk, 2)
-    await Timer(1, unit="ns")
+    await ClockCycles(dut.clk, 5)
+    await Timer(SETTLE_NS, unit="ns")
 
 
 async def _pulse(dut, ui, ctrl):
-    """Drive ui_in/uio_in, let them be sampled on one rising edge, then idle."""
+    """Drive one transfer, then idle for a clock so outputs settle.
+
+    Inputs are driven a full clock ahead of the edge that samples them, and
+    the idle clock afterwards gives the combinational read path time to
+    resolve before the caller looks at uo_out.
+    """
     dut.ui_in.value = ui & 0xFF
     dut.uio_in.value = ctrl
     await RisingEdge(dut.clk)
     dut.uio_in.value = 0
-    await Timer(1, unit="ns")
+    dut.ui_in.value = 0
+    await ClockCycles(dut.clk, 1)
+    await Timer(SETTLE_NS, unit="ns")
 
 
 async def load_addr(dut, addr):
@@ -108,7 +137,7 @@ async def read_byte(dut):
     uo_out is a combinational mux off the address pointer, so the data is
     already present before the strobe; the strobe only advances the pointer.
     """
-    value = int(dut.uo_out.value)
+    value = resolved(dut.uo_out, "uo_out")
     await _pulse(dut, 0, STROBE)
     return value
 
@@ -132,15 +161,14 @@ async def read_word(dut, addr):
 async def read_reg8(dut, addr):
     """Read a single byte-wide register."""
     await load_addr(dut, addr)
-    await Timer(1, unit="ns")
-    return int(dut.uo_out.value)
+    return resolved(dut.uo_out, "uo_out")
 
 
 async def clear_accumulator(dut):
     await load_addr(dut, ADDR_CONTROL)
     await write_byte(dut, CTRL_CLEAR_ACC)
     await ClockCycles(dut.clk, 2)
-    await Timer(1, unit="ns")
+    await Timer(SETTLE_NS, unit="ns")
 
 
 async def execute(dut):
@@ -151,7 +179,7 @@ async def execute(dut):
     """
     await _pulse(dut, 0, START_EXEC)
     await ClockCycles(dut.clk, 3)
-    await Timer(1, unit="ns")
+    await Timer(SETTLE_NS, unit="ns")
 
 
 # ---------------------------------------------------------------------------
@@ -203,10 +231,10 @@ async def test_identification(dut):
     caps = await read_word(dut, ADDR_CAPS)
     assert caps == CAPABILITIES, f"CAPABILITIES: expected {CAPABILITIES:#010x}, got {caps:#010x}"
 
-    status = int(dut.uio_out.value)
+    status = resolved(dut.uio_out, "uio_out")
     assert status & READY, f"ready should be asserted, uio_out={status:#04x}"
 
-    oe = int(dut.uio_oe.value)
+    oe = resolved(dut.uio_oe, "uio_oe")
     assert oe == 0xF0, f"uio_oe: expected 0xf0 (upper nibble out), got {oe:#04x}"
 
 

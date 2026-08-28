@@ -1,6 +1,6 @@
-read_verilog -sv rtl/core/nce_int8_int32_mac_lane.sv
-read_verilog -sv rtl/core/nce_int32_to_fp32.sv
-read_verilog -sv rtl/top/tt_um_nce_neural_engine.sv
+read_verilog -sv src/nce_int8_int32_mac_lane.sv
+read_verilog -sv src/nce_int32_to_fp32.sv
+read_verilog -sv src/tt_um_nce_neural_engine.sv
 
 hierarchy -check -top tt_um_nce_neural_engine
 synth -top tt_um_nce_neural_engine -flatten

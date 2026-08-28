@@ -13,11 +13,13 @@ project:
 # Your top module name must start with "tt_um_" and should match the name of this repo:
   top_module:  "tt_um_nce_neural_engine"
 
-# List your sources here:
+# List your project's source files here.
+# Source files must be in ./src and you must list each source file separately, one per line.
+# Don't forget to also update `PROJECT_SOURCES` in test/Makefile.
   source_files:
-    - "rtl/core/nce_int8_int32_mac_lane.sv"
-    - "rtl/core/nce_int32_to_fp32.sv"
-    - "rtl/top/tt_um_nce_neural_engine.sv"
+    - "nce_int8_int32_mac_lane.sv"
+    - "nce_int32_to_fp32.sv"
+    - "tt_um_nce_neural_engine.sv"
 
 # The pinout of your project.
 pinout:

@@ -14,11 +14,11 @@
 The Neural Compute Engine (NCE) is an ASIC accelerator integrating an INT8 dot-product compute datapath (`DOT4`), 32-bit integer accumulation (`INT32`), on-demand shared IEEE-754 FP32 readout conversion, and a direct-strobed 8-bit memory-mapped register port.
 
 ### Repository Deliverables Checklist
-- [x] **Top-Level Wrapper:** `rtl/top/tt_um_nce_neural_engine.sv` (TT standard port signature)
-- [x] **Self-Contained 3-Source Manifest:** Fully declared in `info.yaml`, `config.json`, `test/Makefile`, and `scripts/run_tt_um_nce_neural_engine.sh`
+- [x] **Top-Level Wrapper:** `src/tt_um_nce_neural_engine.sv` (TT standard port signature)
+- [x] **Self-Contained 3-Source Manifest:** Sources live in `src/` and are declared in `info.yaml`, `flow/tt_um_nce_neural_engine/config.json`, and `test/Makefile`
 - [x] **LibreLane Flow Configuration:** `flow/tt_um_nce_neural_engine/config.json` & `pin_order.cfg`
-- [x] **CI/CD Build Workflows:** `.github/workflows/gds.yaml` (`tinytapeout/tt-gds-action@v2`) & `test.yaml`
-- [x] **Verification Suites:** Icarus Verilog testbench (`tb/unit/tb_tt_um_nce_neural_engine.sv`) & Cocotb harness (`test/test.py`)
+- [x] **CI/CD Build Workflows:** `.github/workflows/gds.yaml` (`TinyTapeout/tt-gds-action@ttsky26c`, with `precheck`, `gl_test` and `viewer` jobs), `test.yaml` & `docs.yaml`
+- [x] **Verification Suite:** Cocotb harness (`test/test.py`) driving the direct-strobed register port, run by the `test` workflow on every push
 - [x] **Silicon Area & Timing Sign-Off:** Gate-level synthesis and OpenSTA 3.1.0 static timing analysis reports.
 
 ---
@@ -29,9 +29,9 @@ All 3 required SystemVerilog modules are self-contained with zero external depen
 
 | Index | Relative File Path | Functional Subsystem Description |
 |:---:|---|---|
-| 1 | `rtl/core/nce_int8_int32_mac_lane.sv` | 4-element signed INT8 dot product multiplier tree with 32-bit integer accumulator |
-| 2 | `rtl/core/nce_int32_to_fp32.sv` | Signed 32-bit integer to IEEE-754 binary32 converter for shared readout |
-| 3 | `rtl/top/tt_um_nce_neural_engine.sv` | Top-level Tiny Tapeout wrapper with 4-entry $\times$ 32-bit regfile and direct-strobed port |
+| 1 | `src/nce_int8_int32_mac_lane.sv` | 4-element signed INT8 dot product multiplier tree with 32-bit integer accumulator |
+| 2 | `src/nce_int32_to_fp32.sv` | Signed 32-bit integer to IEEE-754 binary32 converter for shared readout |
+| 3 | `src/tt_um_nce_neural_engine.sv` | Top-level Tiny Tapeout wrapper with 4-entry $\times$ 32-bit regfile and direct-strobed port |
 
 ---
 
@@ -126,9 +126,9 @@ All 3 required SystemVerilog modules are self-contained with zero external depen
 {
   "DESIGN_NAME": "tt_um_nce_neural_engine",
   "VERILOG_FILES": [
-    "dir::../../rtl/core/nce_int8_int32_mac_lane.sv",
-    "dir::../../rtl/core/nce_int32_to_fp32.sv",
-    "dir::../../rtl/top/tt_um_nce_neural_engine.sv"
+    "dir::../../src/nce_int8_int32_mac_lane.sv",
+    "dir::../../src/nce_int32_to_fp32.sv",
+    "dir::../../src/tt_um_nce_neural_engine.sv"
   ],
   "CLOCK_PORT": "clk",
   "CLOCK_PERIOD": 20.0,

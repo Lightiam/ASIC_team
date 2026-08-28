@@ -1,38 +1,49 @@
-# Makefile for cocotb simulation in Tiny Tapeout
+# Makefile
+# See https://docs.cocotb.org/en/stable/quickstart.html for more info
 
+# defaults
 SIM ?= icarus
+FST ?= -fst # Use more efficient FST format
 TOPLEVEL_LANG ?= verilog
-
+SRC_DIR = $(PWD)/../src
 PROJECT_SOURCES = \
-  ../rtl/pkg/nce_pkg.sv \
-  ../rtl/core/nce_int8_dot4.sv \
-  ../rtl/core/nce_int18_to_fp32.sv \
-  ../rtl/core/nce_int8_dot4_fp32.sv \
-  ../rtl/core/nce_fp32_decode.sv \
-  ../rtl/core/nce_fp32_align.sv \
-  ../rtl/core/nce_fp32_addsub_raw.sv \
-  ../rtl/core/nce_fp32_normalize.sv \
-  ../rtl/core/nce_fp32_round_pack.sv \
-  ../rtl/core/nce_fp32_add.sv \
-  ../rtl/core/nce_fp32_add_special.sv \
-  ../rtl/core/nce_fp32_accumulator.sv \
-  ../rtl/core/nce_int8_mac_lane.sv \
-  ../rtl/core/nce_int8_simd8_mac.sv \
-  ../rtl/memory/nce_regfile_16x256.sv \
-  ../rtl/memory/nce_register_banks.sv \
-  ../rtl/core/nce_int8_register_mac_core.sv \
-  ../rtl/control/nce_int8_command_decoder.sv \
-  ../rtl/core/nce_int8_command_core.sv \
-  ../rtl/bus/nce_axi4lite_frontend.sv \
-  ../rtl/bus/nce_axi_csr_backend.sv \
-  ../rtl/top/nce_axi_int8_top.sv \
-  ../rtl/top/tt_um_nce_neural_engine.sv
+  nce_int8_int32_mac_lane.sv \
+  nce_int32_to_fp32.sv \
+  tt_um_nce_neural_engine.sv
 
-VERILOG_SOURCES += $(PROJECT_SOURCES) tb.v
+ifneq ($(GATES),yes)
 
+# RTL simulation:
+SIM_BUILD				= sim_build/rtl
+COMPILE_ARGS    += -g2012
+VERILOG_SOURCES += $(addprefix $(SRC_DIR)/,$(PROJECT_SOURCES))
+
+else
+
+# Gate level simulation:
+SIM_BUILD				= sim_build/gl
+COMPILE_ARGS    += -DGL_TEST
+COMPILE_ARGS    += -DFUNCTIONAL
+COMPILE_ARGS    += -DUSE_POWER_PINS
+COMPILE_ARGS    += -DSIM
+COMPILE_ARGS    += -DUNIT_DELAY=\#1
+VERILOG_SOURCES += $(PDK_ROOT)/sky130A/libs.ref/sky130_fd_sc_hd/verilog/primitives.v
+VERILOG_SOURCES += $(PDK_ROOT)/sky130A/libs.ref/sky130_fd_sc_hd/verilog/sky130_fd_sc_hd.v
+
+# this gets copied in by the GDS action workflow
+VERILOG_SOURCES += $(PWD)/gate_level_netlist.v
+
+endif
+
+# Allow sharing configuration between design and testbench via `include`:
+COMPILE_ARGS 		+= -I$(SRC_DIR)
+
+# Include the testbench sources:
+VERILOG_SOURCES += $(PWD)/tb.v
 TOPLEVEL = tb
-MODULE = test
 
-COMPILE_ARGS += -I../rtl/pkg -g2012
+# List test modules to run, separated by commas and without the .py suffix:
+COCOTB_TEST_MODULES = test
 
+# include cocotb's make rules to take care of the simulator setup
 include $(shell cocotb-config --makefiles)/Makefile.sim

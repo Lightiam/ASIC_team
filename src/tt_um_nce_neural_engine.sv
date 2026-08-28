@@ -32,7 +32,7 @@ module tt_um_nce_neural_engine (
     output wire [7:0] uio_out,  // IOs: Output path
     output wire [7:0] uio_oe,   // IOs: Enable path (active high: 0=input, 1=output)
     input  wire       ena,      // always 1 when powered
-    input  wire       clk,      // clock (50 MHz)
+    input  wire       clk,      // clock (33.33 MHz, see clock_hz in info.yaml)
     input  wire       rst_n     // reset_n - low to reset
 );
 

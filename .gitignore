@@ -21,3 +21,13 @@ flow/*/harden.log
 # Large GDS layouts are built by Tiny Tapeout CI, not committed
 GDSII/
 *.gds
+
+# Tiny Tapeout build outputs
+tt_submission/
+src/user_config.json
+src/config_merged.json
+test/sim_build/
+test/results.xml
+test/gate_level_netlist.v
+*.fst
+*.fst.hier

@@ -54,7 +54,7 @@ All 3 required SystemVerilog modules are self-contained with zero external depen
       uio_out[6] <======= | busy       (1 = Compute active)   |
       uio_out[7] <======= | done       (1 = Compute complete) |
                           |                                   |
-      clk, rst_n, ena ==> | 50 MHz Clock, Active-Low Reset    |
+      clk, rst_n, ena ==> | 33.33 MHz Clock, Active-Low Reset    |
                           +-----------------------------------+
 ```
 
@@ -131,7 +131,7 @@ All 3 required SystemVerilog modules are self-contained with zero external depen
     "dir::../../src/tt_um_nce_neural_engine.sv"
   ],
   "CLOCK_PORT": "clk",
-  "CLOCK_PERIOD": 20.0,
+  "CLOCK_PERIOD": 30.0,
   "PDK": "sky130A",
   "STD_CELL_LIBRARY": "sky130_fd_sc_hd",
   "FP_SIZING": "absolute",

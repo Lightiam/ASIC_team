@@ -381,3 +381,49 @@ async def test_fp32_readback(dut):
     assert fp == expected, (
         f"fp32({acc}): expected {expected:#010x}, got {fp:#010x}"
     )
+
+
+@cocotb.test()
+async def test_busy_done_handshake(dut):
+    """busy asserts while the MAC computes, then done pulses when the result lands.
+
+    This is a regression test for a real defect: busy_q was assigned 1 and
+    then 0 inside the same sequential block, so the last assignment always
+    won and uio_out[6] was tied low forever while info.yaml advertised it as
+    a live status output. A dead status pin passes every functional test that
+    does not look at it, which is exactly why this one exists.
+    """
+    await start_and_reset(dut)
+
+    await write_word(dut, ADDR_R0, 0x01020304)
+    await write_word(dut, ADDR_R1, 0x0A0B0C0D)
+    await clear_accumulator(dut)
+
+    # Drive start_exec for exactly one clock, then sample uio_out on every
+    # subsequent edge. _pulse() idles a clock and would swallow the pulse.
+    dut.ui_in.value = 0
+    dut.uio_in.value = START_EXEC
+    await RisingEdge(dut.clk)
+    dut.uio_in.value = 0
+
+    busy_trace, done_trace = [], []
+    for _ in range(6):
+        await Timer(SETTLE_NS, unit="ns")
+        status = resolved(dut.uio_out, "uio_out")
+        busy_trace.append(1 if status & BUSY else 0)
+        done_trace.append(1 if status & DONE else 0)
+        await RisingEdge(dut.clk)
+
+    assert sum(busy_trace) == 1, (
+        f"busy should assert for exactly one cycle, got {busy_trace}"
+    )
+    assert sum(done_trace) == 1, (
+        f"done should pulse for exactly one cycle, got {done_trace}"
+    )
+    assert busy_trace.index(1) < done_trace.index(1), (
+        f"busy must precede done: busy={busy_trace} done={done_trace}"
+    )
+
+    # The accumulate still happened, so the fix did not change the datapath.
+    acc = to_int32(await read_word(dut, ADDR_ACC_INT32))
+    assert acc == dot4(0x01020304, 0x0A0B0C0D), f"accumulator wrong: {acc}"

@@ -1,5 +1,14 @@
 # Independent Area Audit — tt_um_nce_neural_engine
 
+> **SUPERSEDED — read this first.** This audit was written against the earlier
+> 8-lane SIMD / AXI4-Lite architecture (`nce_axi_int8_top` → `nce_int8_command_core`
+> → `nce_int8_simd8_mac`). That design was retired: it measured ~53,026 µm² against a
+> 43,045 µm² usable budget and was rescoped to a single INT8 DOT4 lane with a
+> direct-strobed register port. The dependency chain, pin mapping, and source manifest
+> below describe the retired design and are **not** the shipping architecture.
+> The area methodology remains valid; the numbers for the current design are in
+> `DELIVERY_MANIFEST.md`.
+
 Verification of the Tiny Tapeout submission audit, using cell areas read directly from
 `sky130_fd_sc_hd__tt_025C_1v80.lib` rather than quoted figures.
 
@@ -13,7 +22,7 @@ Checked against the files on disk, not taken on trust:
 |---|---|
 | `nce_int8_register_mac_core.sv` + `nce_register_banks.sv` added to `info.yaml` | ✅ lines 34–35 |
 | Same two added to `config.json`, `test/Makefile`, `run_tt_um_nce_neural_engine.sh` | ✅ 2 matches in each |
-| `.github/workflows/gds.yaml` using `tinytapeout/tt-gds-action@v2` | ✅ correct action |
+| `.github/workflows/gds.yaml` using `tinytapeout/tt-gds-action@v2` | ❌ **WRONG** — no `v2` tag exists; the action is tagged per shuttle. Corrected to `TinyTapeout/tt-gds-action@ttsky26c`. |
 | `.github/workflows/test.yaml` | ✅ present |
 | `uio_out[4..7]` driven with cmd_ready / resp_valid / engine_busy / engine_done | ✅ lines 112–115 |
 

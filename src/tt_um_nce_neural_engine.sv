@@ -170,14 +170,21 @@ module tt_um_nce_neural_engine (
             mac_clr_req <= 1'b0;
             mac_en_req  <= 1'b0;
             done_q      <= 1'b0;
+            busy_q      <= 1'b0;
 
-            // Handle Compute Start Request
+            // Completion: mac_en_req was asserted last cycle, so the MAC
+            // accumulates on this edge and the result is readable from the
+            // next cycle. Pulse done there.
+            if (mac_en_req) begin
+                done_q <= 1'b1;
+            end
+
+            // Handle Compute Start Request. busy_q is held for exactly the
+            // cycle during which the MAC computes, then falls as done rises.
             if (start_exec) begin
-                busy_q      <= 1'b1;
                 mac_en_req  <= 1'b1;
+                busy_q      <= 1'b1;
                 acc_valid_q <= 1'b1;
-                done_q      <= 1'b1;
-                busy_q      <= 1'b0;
             end
 
             // Handle Direct Strobed Address Load or Data Transfer

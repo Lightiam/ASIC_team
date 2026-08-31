@@ -1,4 +1,5 @@
 {
+  "//": "NOT the Tiny Tapeout flow config. The TT flow reads src/config.json, which is authoritative. This file drives a standalone LibreLane run of the same design and is kept aligned with it: CLOCK_PERIOD, PL_TARGET_DENSITY_PCT and RUN_LINTER must match src/config.json or the two flows diverge silently.",
   "DESIGN_NAME": "tt_um_nce_neural_engine",
   "VERILOG_FILES": [
     "dir::../../src/nce_int8_int32_mac_lane.sv",
@@ -14,9 +15,9 @@
   "CORE_AREA": "10 10 498.76 215.76",
   "FP_PIN_ORDER_CFG": "dir::pin_order.cfg",
   "FP_CORE_UTIL": 40,
-  "PL_TARGET_DENSITY_PCT": 48,
+  "PL_TARGET_DENSITY_PCT": 60,
   "GRT_ALLOW_CONGESTION": true,
-  "RUN_LINTER": false,
+  "RUN_LINTER": true,
   "RUN_MAGIC_DRC": true,
   "RUN_KLAYOUT_DRC": true,
   "RUN_NETGEN_LVS": true

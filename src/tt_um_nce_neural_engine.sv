@@ -56,22 +56,28 @@ module tt_um_nce_neural_engine (
     reg [31:0] regfile_q [0:3];
 
     // Control & Configuration Registers
-    reg [7:0] config_src_q;  // [1:0] = Src A (0..3), [3:2] = Src B (0..3)
+    reg [7:0] config_src_q;   // lane 0: [1:0] = Src A (0..3), [3:2] = Src B
+    reg [7:0] config_src2_q;  // lane 1: [1:0] = Src A (0..3), [3:2] = Src B
     reg       busy_q;
     reg       done_q;
     reg       acc_valid_q;
 
-    // Compute datapath wires
-    wire [31:0] op_a = regfile_q[config_src_q[1:0]];
-    wire [31:0] op_b = regfile_q[config_src_q[3:2]];
-    wire [31:0] acc_int32;
+    // Compute datapath wires -- two independent INT8 DOT4 lanes sharing one
+    // execute strobe, so a single start_exec issues two dot products.
+    wire [31:0] op_a  = regfile_q[config_src_q[1:0]];
+    wire [31:0] op_b  = regfile_q[config_src_q[3:2]];
+    wire [31:0] op_a2 = regfile_q[config_src2_q[1:0]];
+    wire [31:0] op_b2 = regfile_q[config_src2_q[3:2]];
+
+    wire [31:0] acc_int32,  acc_fp32;
     wire        acc_overflow;
-    wire [31:0] acc_fp32;
+    wire [31:0] acc2_int32, acc2_fp32;
+    wire        acc2_overflow;
 
     reg  mac_clr_req;
     reg  mac_en_req;
 
-    // Instantiate Native 1-Lane INT8/INT32 MAC Compute Engine
+    // Lane 0
     nce_int8_int32_mac_lane u_mac_lane (
         .clk_i        (clk),
         .rst_ni       (sys_rst_n),
@@ -83,10 +89,27 @@ module tt_um_nce_neural_engine (
         .overflow_o   (acc_overflow)
     );
 
-    // Instantiate Shared Output INT32 -> FP32 Converter for Readout
+    // Lane 1 -- same strobes, independent operands and accumulator
+    nce_int8_int32_mac_lane u_mac_lane2 (
+        .clk_i        (clk),
+        .rst_ni       (sys_rst_n),
+        .clr_i        (mac_clr_req),
+        .en_i         (mac_en_req),
+        .operand_a_i  (op_a2),
+        .operand_b_i  (op_b2),
+        .accumulator_o(acc2_int32),
+        .overflow_o   (acc2_overflow)
+    );
+
+    // Per-lane INT32 -> FP32 converters for readout
     nce_int32_to_fp32 u_int32_to_fp32 (
         .int_i (acc_int32),
         .fp32_o(acc_fp32)
+    );
+
+    nce_int32_to_fp32 u_int32_to_fp32_2 (
+        .int_i (acc2_int32),
+        .fp32_o(acc2_fp32)
     );
 
     // Read Multiplexer across 8-bit Address Space
@@ -141,11 +164,26 @@ module tt_um_nce_neural_engine (
             8'h26: read_byte_data = acc_fp32[23:16];
             8'h27: read_byte_data = acc_fp32[31:24];
 
-            // Status Register (0x30)
-            8'h30: read_byte_data = {4'b0000, acc_overflow, acc_valid_q, done_q, busy_q};
+            // Lane 1 INT32 Accumulator Readback (0x28..0x2B)
+            8'h28: read_byte_data = acc2_int32[7:0];
+            8'h29: read_byte_data = acc2_int32[15:8];
+            8'h2A: read_byte_data = acc2_int32[23:16];
+            8'h2B: read_byte_data = acc2_int32[31:24];
 
-            // Config Register (0x31)
+            // Lane 1 FP32 Accumulator Readback (0x2C..0x2F)
+            8'h2C: read_byte_data = acc2_fp32[7:0];
+            8'h2D: read_byte_data = acc2_fp32[15:8];
+            8'h2E: read_byte_data = acc2_fp32[23:16];
+            8'h2F: read_byte_data = acc2_fp32[31:24];
+
+            // Status Register (0x30). Bit 4 is lane 1 overflow.
+            8'h30: read_byte_data = {3'b000, acc2_overflow, acc_overflow, acc_valid_q, done_q, busy_q};
+
+            // Config Register (0x31) - lane 0 operand select
             8'h31: read_byte_data = config_src_q;
+
+            // Config Register (0x32) - lane 1 operand select
+            8'h32: read_byte_data = config_src2_q;
 
             default: read_byte_data = 8'h00;
         endcase
@@ -159,7 +197,8 @@ module tt_um_nce_neural_engine (
             regfile_q[1]  <= 32'h00000000;
             regfile_q[2]  <= 32'h00000000;
             regfile_q[3]  <= 32'h00000000;
-            config_src_q  <= 8'h04; // Src A = R0 (0), Src B = R1 (1)
+            config_src_q  <= 8'h04; // lane 0: Src A = R0 (0), Src B = R1 (1)
+            config_src2_q <= 8'h0E; // lane 1: Src A = R2 (2), Src B = R3 (3)
             busy_q        <= 1'b0;
             done_q        <= 1'b0;
             acc_valid_q   <= 1'b0;
@@ -229,8 +268,11 @@ module tt_um_nce_neural_engine (
                             end
                         end
 
-                        // Config Register (0x31): [1:0] Src A, [3:2] Src B
+                        // Config Register (0x31): lane 0 [1:0] Src A, [3:2] Src B
                         8'h31: config_src_q <= ui_in;
+
+                        // Config Register (0x32): lane 1 [1:0] Src A, [3:2] Src B
+                        8'h32: config_src2_q <= ui_in;
 
                         default: ;
                     endcase

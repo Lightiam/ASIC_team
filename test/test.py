@@ -55,9 +55,12 @@ ADDR_R2 = 0x18
 ADDR_R3 = 0x1C
 ADDR_ACC_INT32 = 0x20
 ADDR_ACC_FP32 = 0x24
+ADDR_ACC2_INT32 = 0x28
+ADDR_ACC2_FP32 = 0x2C
 ADDR_STATUS = 0x30
 ADDR_CONTROL = 0x30
 ADDR_CONFIG = 0x31
+ADDR_CONFIG2 = 0x32
 
 HW_ID = 0x4E434531  # "NCE1"
 CAPABILITIES = 0x0000000F
@@ -71,6 +74,7 @@ ST_BUSY = 1 << 0
 ST_DONE = 1 << 1
 ST_ACC_VALID = 1 << 2
 ST_OVERFLOW = 1 << 3
+ST_OVERFLOW2 = 1 << 4
 
 
 # ---------------------------------------------------------------------------
@@ -427,3 +431,73 @@ async def test_busy_done_handshake(dut):
     # The accumulate still happened, so the fix did not change the datapath.
     acc = to_int32(await read_word(dut, ADDR_ACC_INT32))
     assert acc == dot4(0x01020304, 0x0A0B0C0D), f"accumulator wrong: {acc}"
+
+
+@cocotb.test()
+async def test_dual_lane_simd(dut):
+    """One execute strobe drives both lanes with independent operands.
+
+    Lane 0 defaults to R0 x R1 and lane 1 to R2 x R3, so a single start_exec
+    produces two different dot products. This is the whole point of the second
+    lane: 2x INT8 throughput for one issue.
+    """
+    await start_and_reset(dut)
+
+    a0, b0 = 0x01020304, 0x0A0B0C0D   # lane 0 -> 120
+    a1, b1 = 0x02020202, 0x03030303   # lane 1 -> 24
+    await write_word(dut, ADDR_R0, a0)
+    await write_word(dut, ADDR_R1, b0)
+    await write_word(dut, ADDR_R2, a1)
+    await write_word(dut, ADDR_R3, b1)
+    await clear_accumulator(dut)
+
+    # Defaults after reset: lane 0 = R0/R1 (0x04), lane 1 = R2/R3 (0x0e).
+    assert await read_reg8(dut, ADDR_CONFIG) == 0x04
+    assert await read_reg8(dut, ADDR_CONFIG2) == 0x0E
+
+    await execute(dut)
+
+    acc0 = to_int32(await read_word(dut, ADDR_ACC_INT32))
+    acc1 = to_int32(await read_word(dut, ADDR_ACC2_INT32))
+    assert acc0 == dot4(a0, b0) == 120, f"lane 0: expected 120, got {acc0}"
+    assert acc1 == dot4(a1, b1) == 24, f"lane 1: expected 24, got {acc1}"
+
+    # Both accumulate independently on a second issue.
+    await execute(dut)
+    assert to_int32(await read_word(dut, ADDR_ACC_INT32)) == 240
+    assert to_int32(await read_word(dut, ADDR_ACC2_INT32)) == 48
+
+
+@cocotb.test()
+async def test_lane1_config_and_fp32(dut):
+    """Lane 1 operand select is programmable and its FP32 readout tracks."""
+    await start_and_reset(dut)
+
+    await write_word(dut, ADDR_R0, 0xFFFFFFFF)  # -1 x4
+    await write_word(dut, ADDR_R1, 0x01010101)  # +1 x4
+    await write_word(dut, ADDR_R2, 0x00000000)
+    await write_word(dut, ADDR_R3, 0x00000000)
+
+    # Point lane 1 at R0/R1 as well, so both lanes must agree.
+    await load_addr(dut, ADDR_CONFIG2)
+    await write_byte(dut, 0x04)
+    await ClockCycles(dut.clk, 2)
+    assert await read_reg8(dut, ADDR_CONFIG2) == 0x04
+
+    await clear_accumulator(dut)
+    await execute(dut)
+
+    acc0 = to_int32(await read_word(dut, ADDR_ACC_INT32))
+    acc1 = to_int32(await read_word(dut, ADDR_ACC2_INT32))
+    assert acc0 == acc1 == -4, f"lanes disagree: {acc0} vs {acc1}"
+
+    # Lane 1 FP32 conversion mirrors its own accumulator.
+    fp1 = await read_word(dut, ADDR_ACC2_FP32)
+    assert fp1 == int32_to_fp32_bits(acc1), (
+        f"lane1 fp32({acc1}): expected {int32_to_fp32_bits(acc1):#010x}, got {fp1:#010x}"
+    )
+
+    # Clearing zeroes both lanes.
+    await clear_accumulator(dut)
+    assert to_int32(await read_word(dut, ADDR_ACC_INT32)) == 0
+    assert to_int32(await read_word(dut, ADDR_ACC2_INT32)) == 0

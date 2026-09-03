@@ -11,18 +11,24 @@ Tiny Tapeout Project Documentation
 
 ## How it works
 
-The **Neural Compute Engine (NCE)** is a single-lane INT8 dot-product
-accelerator with a 32-bit integer accumulator and a shared IEEE-754 FP32
-readout path. It occupies a 3x2 tile.
+The **Neural Compute Engine (NCE)** is a dual-lane INT8 dot-product
+accelerator. Each lane has its own 32-bit integer accumulator and its own
+IEEE-754 FP32 readout path. It occupies a 3x2 tile.
 
-The datapath is one **INT8 DOT4 MAC lane**. Each execute step unpacks two
-32-bit operand registers into four signed 8-bit pairs, multiplies them,
-sums the four products exactly in 18 bits, and adds that sum into a
+The datapath is two independent **INT8 DOT4 MAC lanes** sharing one execute
+strobe, so a single `start_exec` issues two dot products. Each lane unpacks
+two 32-bit operand registers into four signed 8-bit pairs, multiplies them,
+sums the four products exactly in 18 bits, and adds that sum into its own
 persistent signed 32-bit accumulator:
 
 ```
-acc <- acc + (a0*b0 + a1*b1 + a2*b2 + a3*b3)
+lane0_acc <- lane0_acc + (a0*b0 + a1*b1 + a2*b2 + a3*b3)   operands per CONFIG0
+lane1_acc <- lane1_acc + (c0*d0 + c1*d1 + c2*d2 + c3*d3)   operands per CONFIG1
 ```
+
+The two lanes select their operands independently from the same four vector
+registers, so they can compute two different dot products, or the same one
+twice, from one issue.
 
 The accumulator is sticky across execute steps, so a longer dot product is
 built by loading successive operand pairs and executing repeatedly. An
@@ -56,16 +62,28 @@ are little-endian: the lowest address holds the least-significant byte.
 | `0x1C`–`0x1F` | `R3` | RW | Vector register 3 |
 | `0x20`–`0x23` | `ACC_INT32` | RO | Signed 32-bit accumulator |
 | `0x24`–`0x27` | `ACC_FP32` | RO | Accumulator converted to IEEE-754 binary32 |
-| `0x30` | `STATUS` | RO | Bit 0 `busy`, bit 1 `done`, bit 2 `acc_valid`, bit 3 `overflow` |
-| `0x30` | `CONTROL` | WO | Bit 0 clears the accumulator, bit 1 clears `R0`–`R3` |
-| `0x31` | `CONFIG` | RW | Bits `[1:0]` select Src A register, bits `[3:2]` select Src B. Resets to `0x04` (Src A = `R0`, Src B = `R1`) |
+| `0x28`–`0x2B` | `ACC1_INT32` | RO | Lane 1 signed 32-bit accumulator |
+| `0x2C`–`0x2F` | `ACC1_FP32` | RO | Lane 1 accumulator converted to IEEE-754 binary32 |
+| `0x30` | `STATUS` | RO | Bit 0 `busy`, bit 1 `done`, bit 2 `acc_valid`, bit 3 lane 0 `overflow`, bit 4 lane 1 `overflow` |
+| `0x30` | `CONTROL` | WO | Bit 0 clears both accumulators, bit 1 clears `R0`–`R3` |
+| `0x31` | `CONFIG0` | RW | Lane 0 operand select. Bits `[1:0]` Src A, `[3:2]` Src B. Resets to `0x04` (`R0` x `R1`) |
+| `0x32` | `CONFIG1` | RW | Lane 1 operand select, same encoding. Resets to `0x0E` (`R2` x `R3`) |
 
 `0x30` is a split register: reading it returns `STATUS`, writing it acts on
 `CONTROL`.
 
 ## How to test
 
-Apply `clk` at 33.33 MHz, hold `ena = 1`, and release `rst_n`.
+**Select this design first.** The Tiny Tapeout die carries many projects
+behind an on-chip multiplexer, and none of this project's pins are connected
+until it is selected. On the demo board that is `ctrl_sel_rst`, `ctrl_sel_inc`
+and `ctrl_ena`; the MicroPython firmware does it for you. Skip this step and
+every read returns nothing and the chip looks dead when it is fine.
+
+`ena` is driven by that multiplexer, not by you — it goes high once the design
+is powered and selected. There is nothing to hold.
+
+Then apply `clk` at 33.33 MHz and release `rst_n`.
 
 **Load the address pointer** — drive the address on `ui_in`, raise
 `strobe` and `addr_load` together for one clock. `addr_load` takes priority
@@ -99,9 +117,13 @@ The result is `4*13 + 3*12 + 2*11 + 1*10 = 120`. Pulsing `start_exec` again
 accumulates to `240`. Reading `0x24` instead returns the same value as
 `0x42F00000`, the binary32 encoding of `120.0`.
 
+Lane 1 ran on the same strobe. With its reset default of `R2` x `R3`, load
+those two registers as well and read `0x28` to get its independent result —
+one issue, two dot products.
+
 The cocotb suite in `test/test.py` exercises exactly these sequences,
-including signed operands, register and accumulator clears, `CONFIG`
-operand selection, and the FP32 readout.
+including signed operands, register and accumulator clears, per-lane operand
+selection, dual-lane accumulation, and both FP32 readouts.
 
 ## IO Pinout
 
@@ -112,7 +134,7 @@ operand selection, and the FP32 readout.
 | `uio[0]` | Input | `strobe` — commit one transfer |
 | `uio[1]` | Input | `is_write` — 1 = write, 0 = read |
 | `uio[2]` | Input | `addr_load` — 1 = load `ui_in` into the address pointer |
-| `uio[3]` | Input | `start_exec` — run one INT8 DOT4 accumulate |
+| `uio[3]` | Input | `start_exec` — run one INT8 DOT4 accumulate on **both** lanes |
 | `uio[4]` | Output | `ready` — tied high, the port accepts a transfer every clock |
 | `uio[5]` | Output | `valid` — high while a read is addressed |
 | `uio[6]` | Output | `busy` — compute active |

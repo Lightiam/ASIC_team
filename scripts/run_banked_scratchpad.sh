@@ -56,7 +56,7 @@ then
 fi
 
 if grep -Eq \
-    'Replacing memory .*data_q with list of registers' \
+    'Replacing memory .*memory_q with list of registers' \
     "${YOSYS_LOG}"
 then
     echo "ERROR: scratchpad data memory was flattened into registers."

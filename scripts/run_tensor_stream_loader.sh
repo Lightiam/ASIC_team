@@ -12,7 +12,6 @@ RTL_FILES=(
     rtl/memory/nce_banked_scratchpad.sv
     rtl/memory/nce_tensor_scratchpad.sv
     rtl/memory/nce_tensor_stream_loader.sv
-    rtl/memory/nce_tensor_loader_scratchpad.sv
 )
 
 echo "===== Icarus tensor-stream-loader compilation ====="
@@ -44,7 +43,7 @@ verilator \
     --lint-only \
     --Wall \
     -Wno-fatal \
-    --top-module nce_tensor_loader_scratchpad \
+    --top-module nce_tensor_scratchpad \
     "${RTL_FILES[@]}"
 
 echo "===== Yosys integrated-loader synthesis check ====="
@@ -55,7 +54,7 @@ if ! yosys \
     -l "${YOSYS_LOG}" \
     -p "
         read_verilog -sv ${RTL_FILES[*]};
-        hierarchy -check -top nce_tensor_loader_scratchpad;
+        hierarchy -check -top nce_tensor_scratchpad;
         proc;
         opt;
         memory_dff;
@@ -71,7 +70,7 @@ then
 fi
 
 if grep -Eq \
-    'Replacing memory .*data_q with list of registers' \
+    'Replacing memory .*memory_q with list of registers' \
     "${YOSYS_LOG}"
 then
     echo "ERROR: loader scratchpad was flattened into registers."

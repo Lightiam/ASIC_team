@@ -100,12 +100,12 @@ then
 fi
 
 if grep -Eqi \
-    'logic loop|multiple conflicting drivers|inferred latch' \
+    'logic loop|multiple conflicting drivers|Warning:.*latch' \
     "${YOSYS_LOG}"
 then
     echo "ERROR: structural issue detected in tensor compute subsystem."
     grep -Ei \
-        'logic loop|multiple conflicting drivers|inferred latch' \
+        'logic loop|multiple conflicting drivers|Warning:.*latch' \
         "${YOSYS_LOG}"
     exit 1
 fi
@@ -113,7 +113,7 @@ fi
 MEMORY_CELL_COUNT="$(
     awk '
         /\$mem_v2/ {
-            count += $2
+            count += $1
         }
         END {
             print count + 0

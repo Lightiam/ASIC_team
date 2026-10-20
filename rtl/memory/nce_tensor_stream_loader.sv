@@ -224,6 +224,10 @@ module nce_tensor_stream_loader #(
         strobe_ok      = 1'b1;
         malformed_beat = 1'b0;
 
+        // Default-assign the loop counter so no path through this
+        // always-block leaves it unassigned (otherwise a latch is inferred).
+        request_lane_index = 0;
+
         if (busy_q) begin
             if (
                 words_remaining_q >=
@@ -324,6 +328,10 @@ module nce_tensor_stream_loader #(
     always @* begin
         memory_ready_all = 1'b1;
         stream_ready_o   = 1'b0;
+
+        // Default-assign the loop counter so no path through this
+        // always-block leaves it unassigned (otherwise a latch is inferred).
+        ready_lane_index = 0;
 
         if (
             busy_q &&

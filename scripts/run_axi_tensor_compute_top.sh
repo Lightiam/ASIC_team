@@ -202,12 +202,12 @@ then
 fi
 
 if grep -Eqi \
-    'logic loop|multiple conflicting drivers|inferred latch|UNOPTFLAT' \
+    'logic loop|multiple conflicting drivers|Warning:.*latch|UNOPTFLAT' \
     "${YOSYS_LOG}"
 then
     echo "ERROR: structural issue detected in complete AXI tensor top."
     grep -Ei \
-        'logic loop|multiple conflicting drivers|inferred latch|UNOPTFLAT' \
+        'logic loop|multiple conflicting drivers|Warning:.*latch|UNOPTFLAT' \
         "${YOSYS_LOG}"
     exit 1
 fi

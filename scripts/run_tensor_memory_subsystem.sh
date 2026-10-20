@@ -92,7 +92,7 @@ then
 fi
 
 if grep -Eq \
-    'Replacing memory .*data_q with list of registers' \
+    'Replacing memory .*memory_q with list of registers' \
     "${YOSYS_LOG}"
 then
     echo "ERROR: tensor memory was flattened into registers."
@@ -100,10 +100,10 @@ then
 fi
 
 MEMORY_CELL_COUNT="$(
-    grep -E '[$]mem_v2[[:space:]]+[0-9]+' \
+    grep -E '[0-9]+[[:space:]]+[$]mem_v2' \
         "${YOSYS_LOG}" \
         | tail -1 \
-        | awk '{print $2}'
+        | awk '{print $1}' || true
 )"
 
 if [[ -z "${MEMORY_CELL_COUNT}" ]]; then

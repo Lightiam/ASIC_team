@@ -6,8 +6,8 @@ This repository is intended to hold consolidated code and resources for the ASIC
 
 ## Authors & Contributors
 
-- **Original RTL Architect and Digital Designer:** Talha Alam
-- **Co-Designer:** Bola Olatunji
+- ** RTL and Digital Designer:** Talha Alam
+- ** Architect, Co-Designer:** Founder, CEO-  Bola Olatunji
 
 ## Getting started
 

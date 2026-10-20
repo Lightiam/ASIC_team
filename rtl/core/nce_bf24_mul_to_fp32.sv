@@ -158,6 +158,10 @@ module nce_bf24_mul_to_fp32 (
 
         round_up = 1'b0;
 
+        // Default-assign the loop counter so no path through this
+        // always-block leaves it unassigned (otherwise a latch is inferred).
+        bit_index = 0;
+
         exponent2_a       = 0;
         exponent2_b       = 0;
         product_exponent2 = 0;

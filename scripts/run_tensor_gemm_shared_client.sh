@@ -53,12 +53,12 @@ then
 fi
 
 if grep -Eqi \
-    'logic loop|multiple conflicting drivers|inferred latch' \
+    'logic loop|multiple conflicting drivers|Warning:.*latch' \
     "${YOSYS_LOG}"
 then
     echo "ERROR: structural issue detected in shared tensor client."
     grep -Ei \
-        'logic loop|multiple conflicting drivers|inferred latch' \
+        'logic loop|multiple conflicting drivers|Warning:.*latch' \
         "${YOSYS_LOG}"
     exit 1
 fi

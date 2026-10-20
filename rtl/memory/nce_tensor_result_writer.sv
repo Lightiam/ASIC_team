@@ -282,6 +282,10 @@ module nce_tensor_result_writer #(
         output_write_data_o   = '0;
         output_write_strb_o   = '0;
 
+        // Default-assign the loop counter so no path through this
+        // always-block leaves it unassigned (otherwise a latch is inferred).
+        write_lane_index = 0;
+
         if (state_q == STATE_WRITE) begin
             for (
                 write_lane_index = 0;

@@ -1,5 +1,6 @@
 import sys, numpy as np
-sys.path.insert(0, r"C:\Users\bolao\Downloads\ASIC_team-main (2)\nce_fix_clone\photonics")
+import os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from l05_mzi_mesh import decompose, reconstruct, svd_program, energy_per_mac
 
 rng = np.random.default_rng(7)

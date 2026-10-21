@@ -72,3 +72,44 @@ specialist HDI fab that stocks Megtron-7 or equivalent low-Df laminate and
 runs a 16:1 through-via aspect ratio. The fab package in `fab/` is still
 correct output and still worth keeping -- the Gerber and drill checks it
 passed are fab-independent -- but the quote does not come from JLCPCB.
+
+## The plane layers now carry copper
+
+`build_board.py` named 15 layers GND1..GND29 and VDD3..VDD27. A name is not
+copper: the board held zero zones, so every one of those layers exported as
+an empty Gerber. The listing looked complete -- 32 copper files, correct
+names -- and would have shipped as bare laminate on 15 layers.
+
+`add_planes.py` adds a filled zone per plane layer, 0.5 mm inset from the
+edge. `verify_fab.py` now parses each exported copper Gerber for a G36/G37
+region and the %TO.N net attribute, so an empty plane fails the export rather
+than passing it.
+
+Measured, for the PDN budget:
+
+- 1 oz sheet resistance 0.4914 mohm/square
+- VRM bank to die, 88 mm over 420 mm width, 0.2083 squares
+- one VDD plane 102.4 uohm; 7 in parallel 14.6 uohm
+
+That is 0.61x the 24 uohm target, i.e. the plane term alone is inside budget.
+This does NOT contradict `l01_pdn.py`, which finds the overall PDN 296x over:
+plane spreading is the most favourable term in the budget, and via, package,
+BGA ball and on-die resistance are excluded here. The useful conclusion is
+narrow -- the deficit is not in the planes, so adding plane layers will not
+close it.
+
+## DRC after the pours: 0 errors, 15 warnings
+
+Adding the planes moved DRC from 0 violations to 15, all of one type and all
+warnings:
+
+    [isolated_copper] Zone [GND] on GND1, priority 0   ... x15
+
+These are correct and are deliberately not suppressed. A plane whose net has
+no pads really is isolated copper -- there is no schematic, so GND and VDD
+connect to nothing. The warning is DRC reporting the missing netlist, and it
+could not report it before because there was no copper to be isolated. It
+will clear when the schematic lands and the planes acquire pads. Excluding
+the rule would hide the one check that is currently telling the truth.
+
+Errors remain 0, and `export_fab.sh` gates on errors only, for that reason.

@@ -174,8 +174,7 @@ def apply_project_rules(pro_path: str) -> None:
         doc = json.load(fh)
     rules = doc.setdefault("board", {}).setdefault("design_settings", {})                .setdefault("rules", {})
     rules.update(STANDARD_RULES)
-    with open(pro_path, "w", encoding="utf-8", newline="
-") as fh:
+    with open(pro_path, "w", encoding="utf-8", newline="\n") as fh:
         json.dump(doc, fh, indent=2)
 
 
@@ -183,11 +182,18 @@ def main() -> int:
     out = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                        "lightrail_dual_nce.kicad_pcb")
 
+    # --no-markers omits the silkscreen placement rectangles and labels.
+    # They exist to show where things GO on an unpopulated board; once
+    # build_schematic.py places real footprints they become duplicate
+    # artwork sitting on copper, worth 294 DRC violations between them.
+    markers = "--no-markers" not in sys.argv
+
     board = pcbnew.BOARD()
     build_stackup(board)
     add_outline(board)
-    place_dies(board)
-    place_vrm(board)
+    if markers:
+        place_dies(board)
+        place_vrm(board)
 
     # Design rules. These must be SET, not left at zero: an unset minimum
     # clearance reads back as 0.000 mm, which is not "no constraint" to a
@@ -198,7 +204,13 @@ def main() -> int:
     # .kicad_pro file. Assigning BOARD_DESIGN_SETTINGS members here and
     # calling SaveBoard does NOT persist them -- the values read back
     # unchanged. apply_project_rules() writes them where they actually live.
-    board.GetDesignSettings().SetCopperEdgeClearance(mm(0.3))
+    # The vestigial line here was
+    #     board.GetDesignSettings().SetCopperEdgeClearance(mm(0.3))
+    # which raises AttributeError -- the binding exposes the member
+    # m_CopperEdgeClearance, not a setter. It is simply deleted rather
+    # than corrected, because the comment above is right: a value set
+    # on BOARD_DESIGN_SETTINGS does not persist through SaveBoard.
+    # apply_project_rules() writes it where KiCad actually reads it.
 
     pcbnew.SaveBoard(out, board)
     apply_project_rules(out.replace(".kicad_pcb", ".kicad_pro"))
@@ -206,7 +218,9 @@ def main() -> int:
     print(f"board written : {out}")
     print(f"size          : {BOARD_W_MM} x {BOARD_H_MM} mm")
     print(f"copper layers : {board.GetCopperLayerCount()}")
-    print(f"drawings      : {len(list(board.GetDrawings()))}")
+    print(f"markers       : {'drawn' if markers else 'omitted'}")
+    # board.GetDrawings() raises TypeError in the KiCad 10 binding.
+    print(f"outline segs  : 4")
     print(f"file bytes    : {os.path.getsize(out)}")
     return 0
 

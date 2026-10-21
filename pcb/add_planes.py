@@ -87,6 +87,12 @@ def main() -> int:
         return 1
 
     before = len(list(board.Zones()))
+    # Idempotent: drop any zones already present. Running this twice without
+    # it leaves two overlapping fills per plane layer -- which happened, and
+    # produced 30 zones on 15 layers, because build_board.py was failing and
+    # the board was never actually regenerated underneath.
+    for z in list(board.Zones()):
+        board.Remove(z)
 
     gnd = ensure_net(board, "GND")
     vdd = ensure_net(board, "VDD")

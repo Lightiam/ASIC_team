@@ -140,7 +140,7 @@ def main() -> int:
         print("    %-22s %9.3f mm %11.2f mm %9.1f" %
               (name, r["h_required_mm"], r["board_thickness_mm"], r["z0_check"]))
 
-    print("\n[2] ELECTRICAL REACH vs DIE-TO-DIE SPACING")
+    print("\n[2] ELECTRICAL REACH vs COPPER RUN (die BGA to PIC)")
     print("    trace budget %.0f dB, %.3f mm line\n" % (TRACE_BUDGET_DB, W_MIN_MM))
     worst = {}
     for label, _bit, fnyq in LANES:

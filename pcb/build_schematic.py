@@ -77,16 +77,23 @@ def new_footprint(board: pcbnew.BOARD, ref: str, value: str,
     return fp
 
 
-def add_smd_pad(fp: pcbnew.FOOTPRINT, name: str, dx: float, dy: float,
+def add_smd_pad(fp: pcbnew.FOOTPRINT, name: str, ax: float, ay: float,
                 w: float, h: float, net: pcbnew.NETINFO_ITEM | None,
                 circle: bool = False) -> pcbnew.PAD:
+    """Place a pad at ABSOLUTE board coordinates ax, ay in mm.
+
+    Absolute rather than footprint-relative on purpose: fp.GetPosition()
+    returns a SwigPyObject with no .x in the KiCad 10 binding, so reading
+    the parent's origin back out to offset from it raises AttributeError.
+    Every caller already knows the component centre it is placing around,
+    so it can do the addition itself and never query the footprint.
+    """
     pad = pcbnew.PAD(fp)
     pad.SetNumber(name)
     pad.SetAttribute(pcbnew.PAD_ATTRIB_SMD)
     pad.SetShape(pcbnew.PAD_SHAPE_CIRCLE if circle else pcbnew.PAD_SHAPE_RECT)
     pad.SetSize(pcbnew.VECTOR2I(mm(w), mm(h)))
-    pad.SetPosition(pcbnew.VECTOR2I(fp.GetPosition().x + mm(dx),
-                                    fp.GetPosition().y + mm(dy)))
+    pad.SetPosition(pcbnew.VECTOR2I(mm(ax), mm(ay)))
     pad.SetLayerSet(pad.SMDMask())
     if net is not None:
         pad.SetNet(net)
@@ -164,7 +171,8 @@ def build_bga(board: pcbnew.BOARD, ref: str, cx: float, cy: float,
                 net = nets.setdefault(key, make_net(board, key))
             tally[kind] += 1
             add_smd_pad(fp, ball_name(row, col),
-                        x0 + col * BGA_PITCH_MM, y0 + row * BGA_PITCH_MM,
+                        cx + x0 + col * BGA_PITCH_MM,
+                        cy + y0 + row * BGA_PITCH_MM,
                         BALL_DIA_MM, BALL_DIA_MM, net, circle=True)
 
     # Courtyard, so DRC can police the keepout around a 55 mm package.
@@ -217,7 +225,7 @@ def build_pic(board: pcbnew.BOARD, cx: float, cy: float, nets: dict) -> int:
                 dy = -(WDM_LANES * 2 * pitch) / 2.0 + i * pitch + \
                      (0.0 if pol == "P" else pair_s)
                 add_smd_pad(fp, "%s_%s%d%s" % (ref, direction, ln, pol),
-                            sx, dy, 0.3, pad_h, net)
+                            cx + sx, cy + dy, 0.3, pad_h, net)
                 count += 1
 
     rect = pcbnew.PCB_SHAPE(fp)
@@ -249,11 +257,11 @@ def build_vrm(board: pcbnew.BOARD, nets: dict) -> int:
                                      make_net(board, "SW%d" % idx))
                 pwm = nets.setdefault("PWM%d" % idx,
                                       make_net(board, "PWM%d" % idx))
-                add_smd_pad(fp, "VIN", -2.0, -2.0, 2.0, 2.0, nets["VIN"])
-                add_smd_pad(fp, "GND", -2.0, 2.0, 2.0, 2.0, nets["GND"])
-                add_smd_pad(fp, "SW", 2.0, 0.0, 2.0, 3.0, sw)
-                add_smd_pad(fp, "PWM", 0.0, -2.5, 0.8, 0.8, pwm)
-                add_smd_pad(fp, "VCC", 0.0, 2.5, 0.8, 0.8, nets["VDD"])
+                add_smd_pad(fp, "VIN", x - 2.0, y - 2.0, 2.0, 2.0, nets["VIN"])
+                add_smd_pad(fp, "GND", x - 2.0, y + 2.0, 2.0, 2.0, nets["GND"])
+                add_smd_pad(fp, "SW",  x + 2.0, y + 0.0, 2.0, 3.0, sw)
+                add_smd_pad(fp, "PWM", x + 0.0, y - 2.5, 0.8, 0.8, pwm)
+                add_smd_pad(fp, "VCC", x + 0.0, y + 2.5, 0.8, 0.8, nets["VDD"])
                 rect = pcbnew.PCB_SHAPE(fp)
                 rect.SetShape(pcbnew.SHAPE_T_RECT)
                 rect.SetStart(pcbnew.VECTOR2I(mm(x - DRMOS_W_MM / 2),
@@ -281,12 +289,15 @@ def main() -> int:
     # so the markers are duplicate artwork sitting on top of copper -- 294
     # silk violations between them. Placeholders are deleted once the thing
     # they stood for exists.
-    # board.Drawings(), not board.GetDrawings(): the latter is broken in the
-    # KiCad 10 bindings -- it calls list() on a SwigPyObject that is not
-    # iterable and raises TypeError. Drawings() iterates correctly.
-    for d in list(board.Drawings()):
-        if d.GetLayer() in (pcbnew.F_SilkS, pcbnew.B_SilkS):
-            board.Remove(d)
+    # The placeholder silkscreen is NOT deleted here. Three different routes
+    # into the KiCad 10 drawings container failed, each differently:
+    # GetDrawings() calls list() on a non-iterable SwigPyObject; iterating
+    # Drawings() raises TypeError despite advertising __iter__; and index
+    # access works on a freshly loaded board but loses len() once footprints
+    # have been removed. Rather than keep guessing at a binding that changes
+    # behaviour depending on what was touched before it, build_board.py now
+    # takes --no-markers and simply never draws them. Deleting artwork is a
+    # worse idea than not creating it.
 
     nets = {"GND": make_net(board, "GND"),
             "VDD": make_net(board, "VDD"),

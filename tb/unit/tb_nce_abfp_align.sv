@@ -84,9 +84,18 @@ module tb_nce_abfp_align;
             @(negedge clk);
             block_i = blk;
             valid_i = 1'b1;
-            @(posedge clk);
+            @(posedge clk);          // stage 1 captures exp_max and the block
             @(negedge clk);
             valid_i = 1'b0;
+            // The DUT is TWO stages now: the exponent scan was split from the
+            // mantissa shift so the reduction and the barrel shift no longer
+            // share one combinational path. The second edge is waited on here
+            // rather than at every call site, so that every existing check
+            // reads the outputs at the same point in the sequence it always
+            // did and the test still measures the DUT rather than the
+            // testbench's idea of when to look.
+            @(posedge clk);          // stage 2 captures the aligned mantissas
+            @(negedge clk);
             checks++;
         end
     endtask

@@ -1,0 +1,46 @@
+{
+  "board": {
+    "layers": 32,
+    "thickness": 4.54,
+    "dimensions": {
+      "width": 420.0,
+      "height": 350.0
+    },
+    "material": "Megtron-7",
+    "copper_weight_oz": 1.0
+  },
+  "dfmTargets": {
+    "manufacturer": "specialist HDI (NOT JLCPCB -- see FAB_NOTES.md)",
+    "minTraceWidth": 0.09,
+    "minClearance": 0.15,
+    "impedanceControl": true,
+    "targetZ0_ohm": 50.0
+  },
+  "interfaces": {
+    "usb": false,
+    "highSpeedSpi": false,
+    "pam4_lanes": [
+      {
+        "name": "112G PAM4",
+        "bit_rate_gbps": 112.0,
+        "nyquist_ghz": 28.0,
+        "reach_mm_megtron7": 107.0
+      },
+      {
+        "name": "200G PAM4",
+        "bit_rate_gbps": 200.0,
+        "nyquist_ghz": 50.0,
+        "reach_mm_megtron7": 77.5
+      }
+    ]
+  },
+  "thermal": {
+    "maxPowerDissipation": null,
+    "note": "UNSPECIFIED -- blocks layout, see [3]"
+  },
+  "blockers": [
+    "Schematic ERC clean",
+    "Thermal budget known",
+    "Datasheets synced"
+  ]
+}

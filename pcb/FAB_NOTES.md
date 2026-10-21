@@ -47,3 +47,28 @@ hole, 0.60 mm via, 0.13 mm annular ring, 0.15 mm silk clearance.
    measures 296x over target across DC-100 MHz with 3320 decoupling
    capacitors. It has to be met on-die and in-package; this board carries the
    low-frequency envelope only.
+
+## Megtron-7 is a functional requirement, not a preference
+
+Recorded after `prelayout_check.py` quantified it. The earlier note said only
+that JLCPCB does not stock Megtron-7 and that FR-4 is roughly 10x the loss.
+That understated the problem: FR-4 does not carry the link at all.
+
+At the 60 mm die-to-die gap, with 0.09 mm lines and a 10 dB trace budget:
+
+| lane | Megtron-7 | FR-4 | required |
+|---|---|---|---|
+| 112G PAM4 (28 GHz) | 107.0 mm | 52.7 mm | 60 mm |
+| 200G PAM4 (50 GHz) | 77.5 mm | 33.2 mm | 60 mm |
+
+200G on FR-4 is short by 1.8x and stays short across the whole plausible
+range of the loss model, so the material choice is settled by that row alone.
+112G on FR-4 is genuinely indeterminate at this fidelity -- it moves to
+64.0 mm under the optimistic bound of the conductor-loss term, crossing the
+requirement. Do not quote the 112G row as a failure without a field solver.
+
+Consequence for ordering: this board does not go to JLCPCB. It needs a
+specialist HDI fab that stocks Megtron-7 or equivalent low-Df laminate and
+runs a 16:1 through-via aspect ratio. The fab package in `fab/` is still
+correct output and still worth keeping -- the Gerber and drill checks it
+passed are fab-independent -- but the quote does not come from JLCPCB.

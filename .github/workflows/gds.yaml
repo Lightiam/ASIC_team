@@ -57,6 +57,12 @@ jobs:
     # publishes the preview; until then the render is still downloadable as
     # the gds_render artifact.
     continue-on-error: true
+    # actions/deploy-pages requires the job to be bound to the github-pages
+    # environment. The TT viewer is a COMPOSITE action and calls deploy-pages
+    # internally, and a composite action cannot declare an environment --
+    # that is job-level only -- so it has to be declared here or the deploy
+    # is refused even once Pages is switched on.
+    environment: github-pages
     permissions:
       pages: write      # to deploy to Pages
       id-token: write   # to verify the deployment originates from an appropriate source

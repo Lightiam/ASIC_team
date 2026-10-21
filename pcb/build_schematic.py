@@ -62,11 +62,29 @@ DRMOS_W_MM, DRMOS_H_MM = 6.0, 6.0
 
 
 def new_footprint(board: pcbnew.BOARD, ref: str, value: str,
-                  x: float, y: float) -> pcbnew.FOOTPRINT:
+                  x: float, y: float, label_dy: float = 0.0) -> pcbnew.FOOTPRINT:
+    """Create a footprint and park its reference designator CLEAR of copper.
+
+    A reference field defaults to the component origin, which on a BGA is the
+    middle of 2500 balls and on a DrMOS is on top of the switch node. Left
+    there it is silkscreen over pads -- the single largest DRC category on
+    this board before this was fixed, and a real fab issue rather than a
+    cosmetic one: silk printed over an exposed pad is clipped by the solder
+    mask and the designator becomes unreadable on the assembled board.
+    label_dy lifts it above the package outline instead.
+    """
     fp = pcbnew.FOOTPRINT(board)
     fp.SetReference(ref)
     fp.SetValue(value)
     fp.SetPosition(pcbnew.VECTOR2I(mm(x), mm(y)))
+
+    refr = fp.Reference()
+    refr.SetPosition(pcbnew.VECTOR2I(mm(x), mm(y + label_dy)))
+    refr.SetTextSize(pcbnew.VECTOR2I(mm(1.0), mm(1.0)))
+    refr.SetTextThickness(mm(0.15))
+    # The value field would land in the same place and collide with the
+    # reference; it carries nothing a fab needs on a provisional board.
+    fp.Value().SetVisible(False)
     # Mark provisional in the footprint itself, so it travels with the data
     # rather than living only in this file's docstring.
     try:
@@ -143,7 +161,8 @@ def classify_ball(row: int, col: int, pic_side: str) -> str:
 
 def build_bga(board: pcbnew.BOARD, ref: str, cx: float, cy: float,
               pic_side: str, nets: dict) -> dict:
-    fp = new_footprint(board, ref, "NCE-BGA2500", cx, cy)
+    fp = new_footprint(board, ref, "NCE-BGA2500", cx, cy,
+                       label_dy=-(DIE_SIZE_MM / 2.0 + 2.0))
     span = (BGA_N - 1) * BGA_PITCH_MM
     x0 = -span / 2.0
     y0 = -span / 2.0
@@ -199,7 +218,8 @@ def build_pic(board: pcbnew.BOARD, cx: float, cy: float, nets: dict) -> int:
     PCB object. Each die contributes 16 TX and 16 RX differential lanes."""
     pic_w = DIE_GAP_MM - 10.0
     pic_h = DIE_SIZE_MM / 2.0
-    fp = new_footprint(board, "PIC1", "TFLN-BRIDGE-3T2", cx, cy)
+    fp = new_footprint(board, "PIC1", "TFLN-BRIDGE-3T2", cx, cy,
+                       label_dy=-(pic_h / 2.0 + 2.0))
 
     count = 0
     # Differential pad geometry has to satisfy the clearance rule TWICE: the
@@ -252,7 +272,9 @@ def build_vrm(board: pcbnew.BOARD, nets: dict) -> int:
             for i in range(per_row):
                 x = 50.0 + i * step
                 idx = bank * per_bank + r * per_row + i
-                fp = new_footprint(board, "U%03d" % (100 + idx), "DrMOS", x, y)
+                fp = new_footprint(board, "U%03d" % (100 + idx),
+                                   "DrMOS", x, y,
+                                   label_dy=-(DRMOS_H_MM / 2.0 + 1.5))
                 sw = nets.setdefault("SW%d" % idx,
                                      make_net(board, "SW%d" % idx))
                 pwm = nets.setdefault("PWM%d" % idx,

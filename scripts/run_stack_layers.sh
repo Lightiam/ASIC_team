@@ -10,7 +10,7 @@ run_one () {
     local tb="tb/unit/tb_${top}.sv"
     echo "===== ${top} ====="
     iverilog -g2012 -s "tb_${top}" -o "build/stack_layers/${top}.vvp" "$@" "${tb}"
-    vvp "build/stack_layers/${top}.vvp" | tail -4
+    vvp "build/stack_layers/${top}.vvp" | tail -8
 }
 
 run_one nce_ternary_dot16   rtl/ternary/nce_ternary_pkg.sv rtl/ternary/nce_ternary_dot16.sv
@@ -28,5 +28,10 @@ run_one nce_tfln_link       rtl/link/nce_tfln_pkg.sv                            
 # and is deliberately not in src/, so it cannot reach the Tiny Tapeout GDS
 # path -- that build compiles exactly the three files info.yaml lists.
 run_one nce_serdes_200g_stub rtl/link/nce_serdes_200g_stub.sv
+
+# PCS gearbox: the width conversion between the core and a 200G PHY.
+# phy/phy_requirements.py shows why this matters -- at 33.33 MHz a single
+# lane needs a 6350-bit bus, and at 800 MHz it needs 265.
+run_one nce_pcs_gearbox      rtl/link/nce_pcs_gearbox.sv
 
 echo "===== All stack-layer unit suites completed ====="

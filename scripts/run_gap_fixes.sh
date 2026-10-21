@@ -49,6 +49,7 @@ run_one () {
 run_one models   l1_diamond_thermal.py
 run_one sw/fabric test_l21_memory_pool.py
 run_one sw/shim   test_lrai_transport_loopback.py
+run_one phy       phy_requirements.py
 
 echo "===== gap-fix suites: ${pass} passed, ${fail} failed ====="
 [ "$fail" -eq 0 ]

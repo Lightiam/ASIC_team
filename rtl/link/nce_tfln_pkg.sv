@@ -14,6 +14,13 @@
 // Frame definition for the die-to-die link that crosses the thin-film lithium
 // niobate photonic IC sitting between the two NCE dies.
 //
+// BANDWIDTH. This framing layer carries ONE BIT PER CLOCK. At the 30.0 ns
+// clock period the flow targets that is 33.3 Mbps per lane, or 533 Mbps
+// across the 16-channel WDM plan. The 1.6T/3.2T figure in the blueprint is
+// the TARGET of the photonic bridge and assumes a 200 Gbps-per-lane analog
+// SerDes PHY, which is not in this repository and is not synthesizable
+// here. The two numbers differ by 6000x. See docs/BANDWIDTH-STATEMENT.md.
+//
 // The optical portion is outside this RTL: each endpoint drives one modulator
 // lane and samples one photodetector lane, both presented here as single-bit
 // serial ports. Everything below is the digital framing that rides on them.

@@ -40,6 +40,29 @@ jobs:
   viewer:
     needs: gds
     runs-on: ubuntu-24.04
+    # The viewer deploys a layout PREVIEW to GitHub Pages. It does not build,
+    # check or touch the GDS -- gds, precheck and gl_test have all already
+    # passed by the time it runs.
+    #
+    # It fails in ~15 seconds with:
+    #   Failed to create deployment (status: 404) ...
+    #   Ensure GitHub Pages has been enabled
+    # because Pages is not enabled on this repository. That turned the whole
+    # workflow red while the GDS, DRC, LVS, antenna and gate-level tests were
+    # all green, and a red X on a passing build is worse than no preview:
+    # the next person to open the repo concludes the flow is broken.
+    #
+    # continue-on-error keeps the preview attempt without letting it decide
+    # the verdict. Enabling Pages in repository settings makes it green and
+    # publishes the preview; until then the render is still downloadable as
+    # the gds_render artifact.
+    continue-on-error: true
+    # actions/deploy-pages requires the job to be bound to the github-pages
+    # environment. The TT viewer is a COMPOSITE action and calls deploy-pages
+    # internally, and a composite action cannot declare an environment --
+    # that is job-level only -- so it has to be declared here or the deploy
+    # is refused even once Pages is switched on.
+    environment: github-pages
     permissions:
       pages: write      # to deploy to Pages
       id-token: write   # to verify the deployment originates from an appropriate source

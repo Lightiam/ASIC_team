@@ -90,6 +90,9 @@ SUITES=(
     run_tensor_stream_loader.sh
     run_tiled_gemm_8x8.sh
     run_tiled_gemm_client_mux.sh
+    run_nce_core_cluster.sh
+    run_stack_layers.sh
+    run_photonics.sh
 )
 
 suite_timeout() {

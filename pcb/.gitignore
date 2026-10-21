@@ -1,0 +1,5 @@
+gerbers/
+fab/
+drc_report.txt
+*.lck
+~*

@@ -86,6 +86,14 @@ def reach_mm(f_hz: float, mat: dict, w_mm: float, budget_db: float) -> dict:
 BOARD_W_MM, BOARD_H_MM = 420.0, 350.0
 DIE_SIZE_MM, DIE_GAP_MM = 55.0, 60.0
 
+# The die gap is spanned by LIGHT, not copper. The copper carries the
+# modulator drive and the TIA output between the die BGA and the PIC
+# transition, which is (gap - PIC width) / 2 = 5.0 mm by geometry.
+PIC_W_MM     = DIE_GAP_MM - 10.0
+COPPER_RUN_MM = (DIE_GAP_MM - PIC_W_MM) / 2.0
+REQ_MM        = 15.0    # copper run plus BGA escape allowance
+
+
 # Signalling. The photonic models set these: l02_tfln_mzm.py drives 200 Gbps
 # per lane and l07_receiver.py specifies a 56 GHz TIA, so the electrical
 # channel runs PAM4 and the figure that matters is the Nyquist frequency,
@@ -147,14 +155,18 @@ def main() -> int:
             worst.setdefault(name, {})[label] = r["reach_mm"]
         print()
 
-    print("    Required run: die edge to PIC and back is at least the die gap,")
-    print("    %.0f mm, before any routing detour or escape length.\n" % DIE_GAP_MM)
+    print("    Required copper run: die BGA to PIC transition only.")
+    print("    The DIE GAP IS OPTICAL -- rtl/link/nce_tfln_pkg.sv is the")
+    print("    optical die-to-die link and the blueprint calls the bridge")
+    print("    a zero-copper datapath. %.1f mm by geometry, %.0f mm with" % (COPPER_RUN_MM, REQ_MM))
+    print("    escape allowance.")
+    print("")
     for name in MATERIALS:
         for label, _b, _f in LANES:
             reach = worst[name][label]
-            verdict = "FITS" if reach > DIE_GAP_MM else "DOES NOT FIT"
+            verdict = "FITS %.1fx" % (reach / REQ_MM) if reach > REQ_MM else "DOES NOT FIT"
             print("      %-22s %-10s %7.1f mm vs %.0f mm  -> %s"
-                  % (name, label, reach, DIE_GAP_MM, verdict))
+                  % (name, label, reach, REQ_MM, verdict))
 
     print("\n[3] PRE-LAYOUT CHECKLIST")
     repo = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

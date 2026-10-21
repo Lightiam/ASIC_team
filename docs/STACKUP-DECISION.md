@@ -101,3 +101,67 @@ ratio from 15.1:1 to 12.4:1, well clear of the 16:1 ceiling. It cannot be
 committed yet because the lane count per die is not fixed -- that comes from
 the schematic, which does not exist. Recorded as the first stackup revision
 to make once it does.
+
+---
+
+# CORRECTION: the die-to-die requirement above is wrong
+
+Everything above measured the copper reach against a **60 mm die-to-die run**.
+There is no such run. The die-to-die datapath is optical.
+
+Two independent sources say so, and both predate this analysis:
+
+- The blueprint labels the bridge "1.6T/3.2T TFLN Interconnect Photonic
+  Bridge (**Zero-copper datapath**)".
+- `rtl/link/nce_tfln_pkg.sv` is titled "TFLN **optical** die-to-die link" and
+  states: "The optical portion is outside this RTL: each endpoint drives one
+  modulator lane and samples one photodetector lane."
+
+I read the geometry out of `build_board.py` and treated the die gap as a
+copper trace. It is the span the light crosses.
+
+## The real copper requirement
+
+The copper runs from the die BGA to the PIC's electrical transition only:
+5.0 mm by geometry (60 mm gap minus the 50 mm PIC, halved), plus BGA escape.
+15 mm is a generous allowance for that.
+
+| material | lane | reach | vs 15 mm | vs 60 mm (as claimed) |
+|---|---|---|---|---|
+| Megtron-7 | 112G PAM4 | 107.0 mm | fits 7.1x | fits |
+| Megtron-7 | 200G PAM4 | 77.5 mm | fits 5.2x | fits |
+| FR-4 | 112G PAM4 | 52.7 mm | fits 3.5x | **claimed fail** |
+| FR-4 | 200G PAM4 | 33.2 mm | fits 2.2x | **claimed fail** |
+
+Every combination clears the real requirement, FR-4 included, with at least
+2.2x margin.
+
+## What this retracts
+
+- "FR-4 does not carry the link" -- **retracted**. It carries the copper
+  portion comfortably. The link it fails to carry is not made of copper.
+- "Megtron-7 is a functional requirement, not a preference" -- **retracted
+  as stated**. The insertion-loss budget does not select the laminate.
+- The 29% margin on the 200G lane, described as "the number to watch during
+  placement" -- that margin was against the wrong distance. The real margin
+  is 5.2x.
+
+## What survives
+
+The physics is unchanged; only the distance it was applied to was wrong.
+
+- The stackup is still pinned by the drill. Aspect ratio does not depend on
+  trace length, so the finding that only 0.09 mm lines keep a 0.30 mm via
+  buildable stands exactly as written.
+- The channel is still conductor-limited (112 dB/m vs 16 dB/m at 50 GHz),
+  so VLP/HVLP foil still matters more than the laminate's Df.
+- The 112G FR-4 sensitivity caveat is now moot rather than resolved: it
+  straddled a requirement that does not exist.
+
+## What actually selects the laminate
+
+Not loss. The open candidates are thermal expansion match to the CVD diamond
+substrate, dimensional stability across 32 layers at 420 x 350 mm, and
+lamination behaviour at 4.54 mm. None of those is computed yet, so the
+material choice is currently **open**, not settled -- which is a weaker and
+more honest position than either of my previous two.

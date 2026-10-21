@@ -113,3 +113,24 @@ will clear when the schematic lands and the planes acquire pads. Excluding
 the rule would hide the one check that is currently telling the truth.
 
 Errors remain 0, and `export_fab.sh` gates on errors only, for that reason.
+
+## RETRACTION: "Megtron-7 is a functional requirement"
+
+The section above claims FR-4 cannot carry the die-to-die link and that the
+material choice is settled by insertion loss. Both are wrong, and the error
+is mine: I measured the copper reach against the 60 mm die-to-die gap, which
+is an OPTICAL span, not a trace.
+
+The blueprint labels the bridge a "zero-copper datapath" and
+`rtl/link/nce_tfln_pkg.sv` is titled "TFLN optical die-to-die link". Each
+endpoint drives one modulator lane and samples one photodetector lane; the
+bulk datapath is 16 WDM channels at 200G PAM4 = 3.2T, all of it light.
+
+The copper requirement is die BGA to PIC transition: 5.0 mm plus escape,
+call it 15 mm. Against that, FR-4 clears 200G with 2.2x margin and 112G with
+3.5x. The loss budget does not choose the laminate.
+
+What this does NOT change: the board still cannot be a JLCPCB order. The
+aspect-ratio and thickness findings are independent of trace length, and the
+32-layer 4.54 mm build with a 15.1:1 through-via is outside their process
+regardless of material. The reason is manufacturing capability, not loss.

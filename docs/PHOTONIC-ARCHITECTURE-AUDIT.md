@@ -157,7 +157,11 @@ The regression runs **65 suites**. `scripts/run_stack_layers.sh` invokes
 Icarus on five RTL blocks. Grepping all of `scripts/` for `test_l0`,
 `l05_mzi` or `photonic` returns **nothing**.
 
-**No photonic model is covered by the regression.** All five suites I ran
+> **Closed.** `scripts/run_photonics.sh` now runs all six photonic suites
+> and is registered in the regression. `tb/unit/tb_nce_tfln_link.sv` gates
+> the link layer, 16 checks, wired into `run_stack_layers.sh`.
+
+**No photonic model was covered by the regression.** All five suites I ran
 manually pass (`test_l01_pdn`, `test_l02_l04`, `test_l03_laser`,
 `test_l05_mzi_mesh`, `test_l07_receiver` -- all exit 0), so the models work.
 Nothing stops them from silently breaking.
@@ -212,12 +216,22 @@ what it is, or define what "holographic" means operationally so it can be
 built and tested. As it stands the name cannot be defended in a technical
 review.
 
-### 3. Put the photonic models under CI
+### 3. Put the photonic models under CI -- DONE
 
-Add `photonics/test_*.py` to `run_stack_layers.sh` or a new
-`run_photonics.sh`. Five suites, all currently passing, none gated. This is
-an afternoon of work and prevents silent rot in the layers the deck leans
-on most.
+`scripts/run_photonics.sh` runs all six suites (l01 PDN, l02/l04 MZM+WDM,
+l03 laser, l05 MZI mesh, l06 crossbar, l07 receiver) and is registered in
+`run_nce_complete_design_regression.sh`. A missing dependency is reported as
+a FAILURE rather than skipped, because a skipped check and a passing check
+look identical in a summary line -- which is how ungated code stays ungated.
+All six pass in the container: 6 passed, 0 failed.
+
+The TFLN link also had no testbench at all, which was the worst place in the
+repository to have none: it is the digital half of the photonic bridge and
+the half the 1.6T/3.2T target is measured against.
+`tb/unit/tb_nce_tfln_link.sv` now tests the claims the package header makes
+-- MSB-first ordering, field-intact round trip, CRC rejection of a corrupted
+frame, idle quiescence, and re-acquisition after a payload containing the
+SYNC marker. 16 checks, all passing.
 
 ### 4. Reclassify Layers 1-7 in the deck
 

@@ -19,4 +19,9 @@ run_one nce_collective_alu  rtl/collective/nce_collective_alu.sv
 run_one nce_lif_dispatcher  rtl/spiking/nce_lif_dispatcher.sv
 run_one nce_neural_gen_loop rtl/gen/nce_neural_gen_loop.sv
 
+# The TFLN link had no testbench at all until now, which is the worst place
+# in the repository to have had none: it is the digital half of the photonic
+# bridge, and the half that the 1.6T/3.2T target is measured against.
+run_one nce_tfln_link       rtl/link/nce_tfln_pkg.sv                             rtl/link/nce_tfln_serializer.sv                             rtl/link/nce_tfln_deserializer.sv
+
 echo "===== All stack-layer unit suites completed ====="

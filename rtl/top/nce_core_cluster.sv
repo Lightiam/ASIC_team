@@ -49,14 +49,20 @@ module nce_core_cluster #(
     input  wire [31:0]                   tern_weights_i,
     input  wire [16*TERNARY_ACT_W-1:0]   tern_acts_i,
     output logic                         tern_valid_o,
-    output logic signed [TERNARY_ACT_W+4:0] tern_result_o,
+    // Ports are declared UNSIGNED even where the value is two's complement.
+    // Yosys emits `wire signed [...]` into the gate netlist for a signed
+    // port, and OpenSTA's Verilog reader rejects that keyword, which fails
+    // the pre-PnR STA step. The bits are identical either way; signedness at
+    // a module boundary carries no information the hardware uses, so the
+    // consumer interprets them. See also lif_threshold_i / coll_out_payload_o.
+    output logic [TERNARY_ACT_W+4:0] tern_result_o,
     output logic [15:0]                  tern_trap_o,
 
     // ---- Layer 9: spiking dispatcher ------------------------------------
     input  wire                          lif_step_i,
     input  wire [LIF_LANES*12-1:0]       lif_current_i,
-    input  wire signed [15:0]            lif_threshold_i,
-    input  wire signed [15:0]            lif_reset_i,
+    input  wire [15:0]                   lif_threshold_i,
+    input  wire [15:0]                   lif_reset_i,
     output logic [LIF_LANES-1:0]         lif_dispatch_o,
     output logic                         lif_idle_o,
 
@@ -68,7 +74,7 @@ module nce_core_cluster #(
     input  wire                          coll_last_i,
     input  wire                          coll_out_ready_i,
     output logic                         coll_out_valid_o,
-    output logic signed [31:0]           coll_out_payload_o,
+    output logic [31:0]                  coll_out_payload_o,
     output logic [COLL_SLOTS-1:0]        coll_complete_o,
     output logic [7:0]                   abfp_block_exp_o,
 

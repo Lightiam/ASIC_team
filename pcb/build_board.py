@@ -153,6 +153,32 @@ def place_vrm(board: pcbnew.BOARD) -> None:
             add_marker(board, x, y, DRMOS_W_MM, DRMOS_H_MM, f"U{bank}{i:02d}")
 
 
+STANDARD_RULES = {
+    "min_clearance":             0.15,   # 6 mil trace/space
+    "min_track_width":           0.15,
+    "min_through_hole_diameter": 0.30,
+    "min_via_diameter":          0.60,
+    "min_via_annular_width":     0.13,
+    "min_silk_clearance":        0.15,
+    "min_hole_to_hole":          0.25,
+    "min_copper_edge_clearance": 0.30,
+}
+
+
+def apply_project_rules(pro_path: str) -> None:
+    """Write DRC constraints into the project file, where KiCad keeps them."""
+    import json
+    if not os.path.exists(pro_path):
+        return
+    with open(pro_path, encoding="utf-8") as fh:
+        doc = json.load(fh)
+    rules = doc.setdefault("board", {}).setdefault("design_settings", {})                .setdefault("rules", {})
+    rules.update(STANDARD_RULES)
+    with open(pro_path, "w", encoding="utf-8", newline="
+") as fh:
+        json.dump(doc, fh, indent=2)
+
+
 def main() -> int:
     out = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                        "lightrail_dual_nce.kicad_pcb")
@@ -163,14 +189,19 @@ def main() -> int:
     place_dies(board)
     place_vrm(board)
 
-    # Design rules sized for HDI Class 3.
-    ds = board.GetDesignSettings()
-    try:
-        ds.SetCopperEdgeClearance(mm(0.3))
-    except Exception:
-        pass
+    # Design rules. These must be SET, not left at zero: an unset minimum
+    # clearance reads back as 0.000 mm, which is not "no constraint" to a
+    # fab, it is an unconfigured board. Values follow the standard process
+    # (6/6 mil trace/space, 0.3 mm via drill, 0.6 mm via pad) so the quote
+    # stays on the normal line rather than triggering a DFM query.
+    # NOTE: DRC constraints are PROJECT settings in KiCad 6+, stored in the
+    # .kicad_pro file. Assigning BOARD_DESIGN_SETTINGS members here and
+    # calling SaveBoard does NOT persist them -- the values read back
+    # unchanged. apply_project_rules() writes them where they actually live.
+    board.GetDesignSettings().SetCopperEdgeClearance(mm(0.3))
 
     pcbnew.SaveBoard(out, board)
+    apply_project_rules(out.replace(".kicad_pcb", ".kicad_pro"))
 
     print(f"board written : {out}")
     print(f"size          : {BOARD_W_MM} x {BOARD_H_MM} mm")

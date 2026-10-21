@@ -45,6 +45,11 @@ between the code and the **deck**, not between the code and its comments.
 
 ## Bandwidth: the largest discrepancy in the project
 
+> **Resolved by restatement.** The claim is now stated as a target with the
+> current framing rate given separately, in `docs/BANDWIDTH-STATEMENT.md`
+> and at every call site. The analysis below is what prompted that.
+
+
 The blueprint claims a **1.6T/3.2T** photonic bridge. The RTL that drives it
 is a one-bit serial port.
 

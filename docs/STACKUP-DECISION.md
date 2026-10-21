@@ -112,7 +112,9 @@ There is no such run. The die-to-die datapath is optical.
 Two independent sources say so, and both predate this analysis:
 
 - The blueprint labels the bridge "1.6T/3.2T TFLN Interconnect Photonic
-  Bridge (**Zero-copper datapath**)".
+  Bridge (**Zero-copper datapath**)". Quoted as the blueprint's own label;
+  those rates are the bridge's target, not an achieved figure, and the part
+  relied on here is "zero-copper". See `BANDWIDTH-STATEMENT.md`.
 - `rtl/link/nce_tfln_pkg.sv` is titled "TFLN **optical** die-to-die link" and
   states: "The optical portion is outside this RTL: each endpoint drives one
   modulator lane and samples one photodetector lane."

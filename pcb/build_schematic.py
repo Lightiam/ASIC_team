@@ -13,7 +13,11 @@ What IS taken from the architecture rather than invented:
 
   blueprint        2 x BGA-2500 compute units, 48 DrMOS phases,
                    TFLN photonic bridge, CVD diamond cooling overlay
-  l04_wdm.py       16 WDM channels at 200 Gbps PAM4 = 3.2T aggregate
+  l04_wdm.py       16 WDM channels. 200 Gbps PAM4 per lane is the TARGET
+                   rate (3.2T aggregate); the digital framing layer drives
+                   33.3 Mbps per lane today. The CHANNEL COUNT is what sets
+                   the ball count here, and that is solid either way.
+                   See docs/BANDWIDTH-STATEMENT.md.
   nce_tfln_pkg.sv  the die-to-die datapath is OPTICAL; copper carries only
                    the modulator drive and the TIA output to the PIC edge
 
@@ -50,7 +54,8 @@ BGA_PITCH_MM = 1.1
 BALL_DIA_MM = 0.6
 
 # --- optical lanes ---------------------------------------------------------
-# 16 WDM channels per direction per die (l04_wdm.py: 16 x 200G = 3.2T).
+# 16 WDM channels per direction per die (l04_wdm.py). The lane COUNT is
+# what matters for the ball map; the per-lane RATE is a target, not current.
 # Differential, so 2 balls per lane.
 WDM_LANES = 16
 
@@ -356,8 +361,10 @@ def main() -> int:
     print("U2 ball map  : vdd=%d gnd=%d signal=%d optical=%d"
           % (t2["vdd"], t2["gnd"], t2["signal"], t2["optical"]))
     print()
-    print("optical lanes: %d per die per direction (16 WDM x 200G = 3.2T)"
+    print("optical lanes: %d per die per direction (16 WDM channels)"
           % WDM_LANES)
+    print("              target 200 Gbps/lane = 3.2T; framing layer today")
+    print("              drives 33.3 Mbps/lane -- see BANDWIDTH-STATEMENT.md")
     print("              differential, so %d balls per die"
           % (WDM_LANES * 2 * 2))
     print()

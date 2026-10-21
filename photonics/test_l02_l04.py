@@ -22,8 +22,11 @@ from l02_tfln_mzm import (
     velocity_mismatch_bandwidth_hz,
 )
 from l04_wdm import (
+    RTL_CLOCK_PERIOD_NS,
     WdmPlan,
     channel_spacing_nm,
+    framing_rate_gbps,
+    target_to_current_ratio,
     crosstalk_penalty_db,
     grid_discrepancy_nm,
     itu_wavelengths_nm,
@@ -128,10 +131,29 @@ cap = s["capacity_gbps_simplex"]
 print(f"  capacity            = {cap/1000:.1f} Tbps simplex, "
       f"{s['capacity_gbps_dual_socket']/1000:.1f} Tbps dual-socket")
 check(abs(cap - 3200.0) < 1e-6,
-      "16 lanes x 200 Gbps = 3.2 Tbps simplex")
-print("  NOTE the spec states 8 lanes x 200 Gbps = 1.6 Tbps simplex,")
+      "16 lanes x 200 Gbps = 3.2 Tbps simplex TARGET capacity")
+print("  NOTE both figures are TARGETS. The spec states 8 lanes x 200 Gbps")
+print("       = 1.6 Tbps simplex,")
 print("       but also specifies a 16-channel comb. 16 channels give 3.2 Tbps")
 print("       simplex, so the lane count and channel count disagree.")
+
+# --- target versus current -------------------------------------------------
+# The capacity above is the TARGET. These checks pin the distance to what the
+# RTL actually drives, so the two cannot quietly be conflated again.
+cur = framing_rate_gbps(plan)
+ratio = target_to_current_ratio(plan)
+print(f"  framing rate        = {cur*1000:.1f} Mbps aggregate "
+      f"({1000/RTL_CLOCK_PERIOD_NS:.1f} Mbps per lane, 1 bit/clock)")
+print(f"  target : current    = {ratio:.0f}x")
+check(abs(cur - 0.5333333) < 1e-5,
+      "16 lanes x 1 bit per 30 ns = 533.3 Mbps aggregate framing rate")
+check(abs(ratio - 6000.0) < 1.0,
+      "the target is 6000x the implemented framing rate")
+check(cap > cur,
+      "the target must never be reported as the achieved rate")
+print("  NOTE 3.2 Tbps is the photonic bridge TARGET and assumes a 200 Gbps")
+print("       per-lane analog SerDes PHY that is not in this repository.")
+print("       See docs/BANDWIDTH-STATEMENT.md.")
 
 pen = s["crosstalk_penalty_db"]
 print(f"  crosstalk penalty   = {pen:.4f} dB with all {plan.channels} channels lit")

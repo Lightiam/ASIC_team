@@ -177,6 +177,12 @@ class MemoryMap:
         return self.local_latency_ns if node == from_node else self.remote_latency_ns
 
     def effective_bandwidth_gbps(self, local_fraction: float,
+                                 # TARGET fabric rate, not a measured one.
+                                 # Scheduling policy has to be designed for
+                                 # the machine being built, so this is the
+                                 # right input -- but every result derived
+                                 # from it is a projection for the target
+                                 # fabric. docs/BANDWIDTH-STATEMENT.md.
                                  local_gbps: float = 3200.0,
                                  remote_gbps: float = 400.0) -> float:
         """Harmonic mean: time is what adds, not bandwidth.

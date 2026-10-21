@@ -78,9 +78,44 @@ def channel_spacing_nm(plan: WdmPlan) -> list[float]:
     return [wl[k + 1] - wl[k] for k in range(len(wl) - 1)]
 
 
+# -----------------------------------------------------------------------------
+# Capacity: the TARGET, and what the repository actually drives today.
+#
+# These are different numbers and the difference is 6,000x. Both are stated
+# here so that nothing has to quote one while meaning the other. The full
+# statement is in docs/BANDWIDTH-STATEMENT.md.
+# -----------------------------------------------------------------------------
+
+# The digital link layer in rtl/link/ serialises ONE BIT per clock
+# (nce_tfln_serializer.sv: "output logic serial_o") at a 30.0 ns clock
+# period. That is the rate the hardware in this repository achieves; the
+# 200 Gbps per lane above is what a photonic PHY would have to deliver.
+RTL_SERIAL_BITS_PER_CLOCK = 1
+RTL_CLOCK_PERIOD_NS = 30.0              # flow configs; measured F_max was lower
+
+
 def aggregate_capacity_gbps(plan: WdmPlan) -> float:
-    """Simplex capacity of one fibre carrying the full comb."""
+    """TARGET simplex capacity of one fibre carrying the full comb.
+
+    Arithmetic over the channel plan, not a measurement. The channel
+    SPACING is modelled and verified against the ITU grid; the per-lane
+    RATE is an assumption about a PHY that does not exist yet. Use
+    framing_rate_gbps() for what the RTL actually drives.
+    """
     return plan.channels * plan.per_lane_gbps
+
+
+def framing_rate_gbps(plan: WdmPlan, clock_period_ns: float | None = None) -> float:
+    """CURRENT aggregate rate of the digital framing layer, all channels."""
+    period = RTL_CLOCK_PERIOD_NS if clock_period_ns is None else clock_period_ns
+    per_lane_gbps = RTL_SERIAL_BITS_PER_CLOCK / period      # bits/ns == Gbps
+    return plan.channels * per_lane_gbps
+
+
+def target_to_current_ratio(plan: WdmPlan,
+                            clock_period_ns: float | None = None) -> float:
+    """How far the target is from what is implemented. Currently 6000."""
+    return aggregate_capacity_gbps(plan) / framing_rate_gbps(plan, clock_period_ns)
 
 
 def crosstalk_penalty_db(plan: WdmPlan, loaded_channels: int | None = None) -> float:

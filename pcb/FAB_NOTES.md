@@ -124,7 +124,10 @@ is an OPTICAL span, not a trace.
 The blueprint labels the bridge a "zero-copper datapath" and
 `rtl/link/nce_tfln_pkg.sv` is titled "TFLN optical die-to-die link". Each
 endpoint drives one modulator lane and samples one photodetector lane; the
-bulk datapath is 16 WDM channels at 200G PAM4 = 3.2T, all of it light.
+bulk datapath is 16 WDM channels, all of it light. (200G per lane, and so
+the 3.2T aggregate, is the TARGET rate -- the digital framing layer drives
+33.3 Mbps per lane today. See docs/BANDWIDTH-STATEMENT.md. The point here is
+that the path is optical, which does not depend on the rate.)
 
 The copper requirement is die BGA to PIC transition: 5.0 mm plus escape,
 call it 15 mm. Against that, FR-4 clears 200G with 2.2x margin and 112G with

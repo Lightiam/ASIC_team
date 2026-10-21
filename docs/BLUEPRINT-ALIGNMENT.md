@@ -9,7 +9,7 @@ divergences and one was an error in my own analysis.
 | blueprint | board | evidence |
 |---|---|---|
 | Dual AI Compute Units (BGA-2500) | U1, U2 | 50 x 50 at 1.1 mm pitch = 2500 balls each, 55 mm package |
-| 1.6T/3.2T TFLN Photonic Bridge | PIC1 | 16 WDM channels x 200G PAM4 = 3.2T, from `photonics/l04_wdm.py` |
+| 1.6T/3.2T TFLN Photonic Bridge | PIC1, **channel count only** | 16 WDM channels, from `photonics/l04_wdm.py`. 200G/lane is the **target**; the framing layer drives 33.3 Mbps/lane today, 6,000x below. See `BANDWIDTH-STATEMENT.md` |
 | Zero-copper datapath | no die-to-die bus | the only high-speed copper is die -> PIC; see the correction below |
 | VRM Arrays, 48 DrMOS phases | U100..U147 | 48 placed, two banks of 24 |
 | 1000 A+ delivery | checked, consistent | see the arithmetic below |
@@ -106,3 +106,16 @@ The build order matters and the pipeline enforces it. Plane zones poured
 before the footprints exist connect to nothing, so `build_schematic.py`
 re-pours after placing U1, U2 and the DrMOS phases. A fill is only valid
 for the pad set it was filled against.
+
+## Bandwidth: target, not current
+
+The blueprint's 1.6T/3.2T is the **design target** of the photonic bridge.
+What the repository drives today is the digital framing layer: one bit per
+clock at 30.0 ns, so 33.3 Mbps per lane and 533 Mbps across the 16-channel
+plan -- a factor of 6,000 below target, or 6,600 at the measured 30.3 MHz
+F_max.
+
+The channel count is solid and sets a real ball count on this board. The
+per-lane rate is an assumption about an analog SerDes PHY that does not
+exist in the repository. `docs/BANDWIDTH-STATEMENT.md` is the authoritative
+version of this and anything quoting 1.6T or 3.2T should point there.

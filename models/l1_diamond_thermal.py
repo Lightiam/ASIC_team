@@ -43,26 +43,35 @@ import numpy as np
 # ---------------------------------------------------------------------------
 # Geometry and materials
 # ---------------------------------------------------------------------------
-DIE_MM = 26.0                  # 26 x 26 mm, 676 mm2 -- large accelerator die
+# Chiplet, not the whole accelerator. 8.00 mm2 is the measured size of
+# Core 16 plus the stack cluster (scripts/area_estimate.ys), so the die is
+# 2.83 mm square.
+DIE_MM = 8.0 ** 0.5            # 2.828 mm -> 8.00 mm2
 SPREADER_T_MM = 0.5            # heat spreader thickness
 GRID = 192                     # cells per side
 
 T_FLUID_C = 25.0               # cold plate fluid inlet
-R_CONV_KW = 0.04               # K/W, direct-die liquid cold plate
+
+# Direct-to-chip microchannel cold plate, specified as a heat transfer
+# COEFFICIENT. The model works in thermal resistance, so R = 1/(h*A). That
+# conversion is the whole argument below, because h alone says nothing
+# until it is multiplied by the area it acts over -- and this die is small.
+H_CONV_W_M2K = 50_000.0
+R_CONV_KW = 1.0 / (H_CONV_W_M2K * (DIE_MM * 1e-3) ** 2)
 
 K_SILICON = 149.0              # W/(m.K)
 K_DIAMOND = 2000.0             # W/(m.K) CVD synthetic
 
-TDP_W = 800.0
+TDP_W = 25.0
 
 # TDP map. Fractions of the die, as (name, power_W, x0, x1, y0, y1) in
 # normalised die coordinates. The GEMM array is the hotspot that matters:
 # 450 W into roughly a quarter of the die area.
 POWER_MAP = [
-    ("SIMD GEMM / ternary array", 450.0, 0.28, 0.72, 0.28, 0.72),
-    ("HBM4 stacks + PHY",         150.0, 0.00, 0.14, 0.10, 0.90),
-    ("200G SerDes drivers",       100.0, 0.86, 1.00, 0.10, 0.90),
-    ("Logic core / LIF / CSR",    100.0, 0.00, 1.00, 0.90, 1.00),
+    ("SIMD GEMM / ternary array", 14.0, 0.28, 0.72, 0.28, 0.72),
+    ("HBM4 interface",             5.0, 0.00, 0.14, 0.10, 0.90),
+    ("200G SerDes drivers",        3.0, 0.86, 1.00, 0.10, 0.90),
+    ("Logic core / LIF / CSR",     3.0, 0.00, 1.00, 0.90, 1.00),
 ]
 
 
@@ -168,7 +177,9 @@ def main() -> int:
     print("spreader       : %.2f mm thick" % SPREADER_T_MM)
     print("grid           : %d x %d" % (GRID, GRID))
     print("TDP            : %.0f W (%.2f W/mm2 average)" % (TDP_W, TDP_W / DIE_MM ** 2))
-    print("cold plate     : fluid %.1f C, R_conv %.3f K/W" % (T_FLUID_C, R_CONV_KW))
+    print("cold plate     : fluid %.1f C, h_conv %.0f W/m2K" % (T_FLUID_C, H_CONV_W_M2K))
+    print("               -> h*A = %.4f W/K, R_conv = %.3f K/W"
+          % (H_CONV_W_M2K * (DIE_MM * 1e-3) ** 2, R_CONV_KW))
     print()
     print("TDP map:")
     for name, w, x0, x1, y0, y1 in POWER_MAP:
@@ -204,8 +215,10 @@ def main() -> int:
     print()
     print("  Datacenter silicon is usually operated below ~90-105 C junction.")
     for label, r in (("silicon", si), ("diamond", di)):
-        v = "INSIDE" if r["peak_C"] <= 90.0 else "ABOVE"
-        print("    %-8s peak %7.2f C  -> %s a 90 C limit" % (label, r["peak_C"], v))
+        v = "MEETS" if r["peak_C"] <= 85.0 else "FAILS"
+        d = "MEETS" if r["hotspot_dT_C"] <= 3.0 else "FAILS"
+        print("    %-8s peak %7.2f C -> %s 85 C | hotspot %6.2f C -> %s 3.0 C"
+              % (label, r["peak_C"], v, r["hotspot_dT_C"], d))
 
     print()
     print("SELF-CHECKS (physics, not outcomes)")

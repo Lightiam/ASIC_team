@@ -59,6 +59,20 @@ BALL_DIA_MM = 0.6
 # Differential, so 2 balls per lane.
 WDM_LANES = 16
 
+# --- optical keep-out corridor ---------------------------------------------
+# The TFLN bridge needs an unobstructed optical path between the dies. The
+# corridor spans the full board height so nothing can route around it
+# vertically and re-enter.
+OPTICAL_KEEPOUT_X0 = 110.0
+OPTICAL_KEEPOUT_X1 = 310.0
+
+# --- HBM4 ------------------------------------------------------------------
+# 8 co-packaged 12-Hi stacks, 4 per die. Placed ABOVE and BELOW each die
+# rather than beside it, because the inner faces are where the optical
+# lanes escape toward the PIC and the outer faces carry the power feed.
+HBM4_W_MM, HBM4_H_MM = 11.0, 11.0
+HBM4_GAP_MM = 3.0
+
 # --- VRM -------------------------------------------------------------------
 # The blueprint annotates "48 DrMOS phases for 1000A+ delivery". build_board.py
 # placed 24 markers, which was half the phase count.
@@ -221,6 +235,81 @@ def build_bga(board: pcbnew.BOARD, ref: str, cx: float, cy: float,
     return tally
 
 
+def add_optical_keepout(board: pcbnew.BOARD) -> dict:
+    """Rule area forbidding copper across the optical corridor.
+
+    This is a KEEPOUT zone, not a filled one: it has no net and it exists to
+    be violated-against. nce_custom_rules.kicad_dru references it by the
+    name set here, so the two must agree -- a typo makes the DRU rule match
+    nothing and pass silently, which is the worst outcome available.
+
+    The die sites sit at x = 125..180 and x = 240..295, so a corridor of
+    110..310 CONTAINS BOTH DIES. That is intentional and worth stating: the
+    corridor is the optical path plus the die faces that feed it, not just
+    the gap between them.
+    """
+    zone = pcbnew.ZONE(board)
+    zone.SetIsRuleArea(True)
+    zone.SetDoNotAllowTracks(True)
+    zone.SetDoNotAllowVias(True)
+    zone.SetDoNotAllowPads(True)
+    zone.SetDoNotAllowZoneFills(True)
+    try:
+        zone.SetZoneName("OPTICAL_KEEPOUT")
+    except Exception:
+        pass
+
+    layers = pcbnew.LSET()
+    for lid in board.GetEnabledLayers().CuStack():
+        layers.addLayer(lid)
+    zone.SetLayerSet(layers)
+
+    poly = zone.Outline()
+    poly.NewOutline()
+    y0, y1 = 0.5, BOARD_H_MM - 0.5
+    for x, y in ((OPTICAL_KEEPOUT_X0, y0), (OPTICAL_KEEPOUT_X1, y0),
+                 (OPTICAL_KEEPOUT_X1, y1), (OPTICAL_KEEPOUT_X0, y1)):
+        poly.Append(mm(x), mm(y))
+    board.Add(zone)
+    return {"x0": OPTICAL_KEEPOUT_X0, "x1": OPTICAL_KEEPOUT_X1,
+            "width_mm": OPTICAL_KEEPOUT_X1 - OPTICAL_KEEPOUT_X0,
+            "layers": len(list(board.GetEnabledLayers().CuStack()))}
+
+
+def place_hbm4(board: pcbnew.BOARD, nets: dict) -> int:
+    """8 HBM4 12-Hi stacks, 4 per die, above and below."""
+    cy = BOARD_H_MM / 2.0
+    placed = 0
+    for die, cx in (("A", BOARD_W_MM / 2.0 - DIE_GAP_MM / 2.0 - DIE_SIZE_MM / 2.0),
+                    ("B", BOARD_W_MM / 2.0 + DIE_GAP_MM / 2.0 + DIE_SIZE_MM / 2.0)):
+        for row, dy in ((0, -(DIE_SIZE_MM / 2.0 + HBM4_GAP_MM + HBM4_H_MM / 2.0)),
+                        (1, +(DIE_SIZE_MM / 2.0 + HBM4_GAP_MM + HBM4_H_MM / 2.0))):
+            for col in range(2):
+                dx = (col - 0.5) * (HBM4_W_MM + HBM4_GAP_MM)
+                x, y = cx + dx, cy + dy
+                ref = "M%s%d%d" % (die, row, col)
+                fp = new_footprint(board, ref, "HBM4-12Hi", x, y,
+                                   label_dy=-(HBM4_H_MM / 2.0 + 1.5))
+                # Four pads only: this is a placement study, not a 1024-bit
+                # interface. Pretending otherwise would put 8192 pads on the
+                # board that no netlist drives.
+                add_smd_pad(fp, "VDD", x - 3.0, y - 3.0, 2.0, 2.0, nets["VDD"])
+                add_smd_pad(fp, "GND", x + 3.0, y - 3.0, 2.0, 2.0, nets["GND"])
+                add_smd_pad(fp, "VDDQ", x - 3.0, y + 3.0, 2.0, 2.0, nets["VDD"])
+                add_smd_pad(fp, "VSSQ", x + 3.0, y + 3.0, 2.0, 2.0, nets["GND"])
+                rect = pcbnew.PCB_SHAPE(fp)
+                rect.SetShape(pcbnew.SHAPE_T_RECT)
+                rect.SetStart(pcbnew.VECTOR2I(mm(x - HBM4_W_MM / 2),
+                                              mm(y - HBM4_H_MM / 2)))
+                rect.SetEnd(pcbnew.VECTOR2I(mm(x + HBM4_W_MM / 2),
+                                            mm(y + HBM4_H_MM / 2)))
+                rect.SetLayer(pcbnew.F_CrtYd)
+                rect.SetWidth(mm(0.05))
+                fp.Add(rect)
+                placed += 1
+    return placed
+
+
 def make_net(board: pcbnew.BOARD, name: str) -> pcbnew.NETINFO_ITEM:
     n = board.FindNet(name)
     if n is None:
@@ -350,6 +439,8 @@ def main() -> int:
     t2 = build_bga(board, "U2", right_x, cy, "left", nets)
     pic_pads = build_pic(board, cx, cy, nets)
     phases = build_vrm(board, nets)
+    hbm = place_hbm4(board, nets)
+    ko = add_optical_keepout(board)
 
     # The planes were poured when the board had no pads, so every zone filled
     # as isolated copper. Re-pouring now that U1, U2 and the DrMOS phases
@@ -364,6 +455,9 @@ def main() -> int:
     print("  BGA-2500   : 2  (U1, U2)")
     print("  TFLN PIC   : 1  (PIC1), %d electrical pads" % pic_pads)
     print("  DrMOS      : %d phases" % phases)
+    print("  HBM4       : %d 12-Hi stacks (4 per die)" % hbm)
+    print("optical KO   : x = %.1f .. %.1f mm (%.0f mm wide) on %d copper layers"
+          % (ko["x0"], ko["x1"], ko["width_mm"], ko["layers"]))
     print("pads total   : %d" % total_pads)
     print("nets         : %d" % len(nets))
     print()

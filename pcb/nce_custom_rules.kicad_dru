@@ -1,0 +1,91 @@
+(version 1)
+
+# LightRail LR-P3A custom design rules.
+#
+# Loaded by KiCad from the project. kicad-cli applies it automatically when
+# the file sits beside the board, so `kicad-cli pcb drc` picks these up with
+# no extra flag.
+#
+# WHAT KICAD CAN AND CANNOT EXPRESS
+# ---------------------------------
+# There is no board-thickness variable in the DRU language, so an aspect
+# ratio cannot be written as a ratio. It has to be converted into a minimum
+# hole size at the known thickness, and that conversion is recorded below so
+# the number is checkable rather than magic.
+#
+# Board thickness is 4.54 mm: 32 copper layers with 31 dielectric gaps of
+# 0.110 mm, which is what holds 50 ohm at the 0.09 mm minimum line width.
+# See docs/STACKUP-DECISION.md.
+#
+#     12:1 aspect ratio  ->  drill >= 4.54 / 12 = 0.378 mm
+#
+# The project rule was 0.30 mm, which is 15.1:1 and VIOLATES a 12:1 cap.
+# Rule 3 therefore raises the floor to 0.40 mm, and the project file has to
+# move with it or the two disagree.
+
+
+# 1. Optical waveguide keep-out corridor.
+#
+# The TFLN bridge needs an unobstructed optical path between the dies. No
+# copper, via or track may enter the corridor. The zone itself is drawn by
+# build_schematic.py as a named rule area on every copper layer; this rule
+# is what gives that zone teeth.
+(rule "optical_waveguide_keepout"
+    (constraint disallow track via pad zone)
+    (condition "A.insideArea('OPTICAL_KEEPOUT')")
+)
+
+# 2. Through-via aspect ratio, expressed as a minimum drill.
+#
+# 0.40 mm at 4.54 mm thickness is 11.35:1, inside the 12:1 cap with margin.
+# Dropping back to 0.30 mm would be 15.1:1 and fail.
+(rule "through_via_min_drill_for_12to1"
+    (constraint hole_size (min 0.40mm))
+    (condition "A.Via_Type == 'Through-hole'")
+)
+
+# 3. Microvia floor.
+#
+# A microvia spans ONE dielectric gap, 0.110 mm, not the whole board, so at
+# a 0.10 mm drill it is 1.10:1 -- nowhere near the 12:1 limit. The binding
+# constraint on a microvia is laser drilling and plating, not aspect ratio.
+(rule "microvia_min_drill"
+    (constraint hole_size (min 0.100mm))
+    (condition "A.Via_Type == 'Micro'")
+)
+
+# 4. Annular ring, 4.0 mil.
+#
+# 0.1016 mm of copper around the hole. Below this the drill-to-pad
+# registration tolerance of a 32-layer lamination starts breaking out.
+(rule "min_annular_ring_4mil"
+    (constraint annular_width (min 0.1016mm))
+)
+
+# 5. High-speed differential pair spacing.
+#
+# The PAM4 lanes between each die and the PIC. 0.127 mm trace-to-trace is
+# the standard-process floor; tighter coupling is possible but prices the
+# board onto a specialist line for no gain over a 5 mm run.
+(rule "pam4_diff_pair_clearance"
+    (constraint clearance (min 0.127mm))
+    (condition "A.NetClass == 'PAM4' && B.NetClass == 'PAM4'")
+)
+
+# 6. Power plane isolation.
+#
+# VDD carries 1000 A across 48 DrMOS phases. 0.254 mm plane-to-plane keeps
+# the creepage sane at the via fields where the current transfers between
+# layers.
+(rule "vdd_plane_clearance"
+    (constraint clearance (min 0.254mm))
+    (condition "A.NetName == 'VDD' || B.NetName == 'VDD'")
+)
+
+# 7. Edge clearance.
+#
+# Copper back from the routed edge. 0.30 mm is the standard-process figure
+# and matches what the project file already sets.
+(rule "copper_to_edge"
+    (constraint edge_clearance (min 0.30mm))
+)

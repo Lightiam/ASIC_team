@@ -92,8 +92,19 @@ def new_footprint(board: pcbnew.BOARD, ref: str, value: str,
     fp.Value().SetVisible(False)
     # Mark provisional in the footprint itself, so it travels with the data
     # rather than living only in this file's docstring.
+    #
+    # On F.Fab, NOT F.Silkscreen. A custom field defaults to visible on the
+    # silkscreen layer, which a 3D render of the board made obvious: 51
+    # copies of "placeholder - not a released pinout" were printed across
+    # the board and would have been plotted into the Gerbers and physically
+    # screen-printed. F.Fab is a documentation layer -- it travels with the
+    # design, appears in fab drawings, and is not manufactured.
     try:
         fp.SetField("PROVISIONAL", "placeholder - not a released pinout")
+        for fld in fp.GetFields():
+            if fld.GetName() == "PROVISIONAL":
+                fld.SetLayer(pcbnew.F_Fab)
+                fld.SetTextSize(pcbnew.VECTOR2I(mm(0.8), mm(0.8)))
     except Exception:
         pass
     board.Add(fp)

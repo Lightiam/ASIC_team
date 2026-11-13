@@ -9,7 +9,7 @@
 // WHAT "ONE CYCLE" ACTUALLY MEANS
 // -----------------------------------------------------------------------------
 // This block compares WINDOW logits per clock. That window comparison is
-// genuinely single-cycle: a comparator tree of depth ceil(log2(WINDOW)).
+// genuinely single-cycle: an explicit comparator tree of depth ceil(log2(WINDOW)).
 //
 // It does NOT select over an entire vocabulary in one cycle, and no design
 // can. A 32768-entry vocabulary needs 32768 comparators and a depth-15 tree
@@ -121,22 +121,58 @@ module nce_neural_gen_loop #(
     end
 
     // ---- single-cycle argmax over the window --------------------------------
-    // Flat reduction; synthesis infers a balanced comparator tree of depth
-    // ceil(log2(WINDOW)). On ties the lowest index wins, which keeps greedy
-    // decode deterministic -- a tie broken by position is reproducible, one
-    // broken by comparator ordering is not.
+    // Explicit balanced comparator tree of depth ceil(log2(WINDOW)).
+    //
+    // This used to be a serial "if (eff[k] > win_val)" loop with a comment
+    // claiming synthesis would turn it into a tree. It does not: the loop is a
+    // chain of WINDOW-1 compare-and-mux stages, each waiting on the previous
+    // one, and the resulting cone from logits_i was the worst setup path in the
+    // nce_core_cluster flow (every violated path launched from gen_logits_i).
+    // Synthesis preserves the order of a priority chain because reordering it
+    // could change the result; a tree has to be written as a tree.
+    //
+    // Tie-break is unchanged: the lowest index wins. A right child takes over
+    // only when STRICTLY greater than the left, so equal values keep the left
+    // (lower-index) side at every level, which is the same rule the serial
+    // chain implemented. tb_nce_neural_gen_loop checks the all-equal case.
+    //
+    // Heap-indexed: node n has children 2n (left) and 2n+1 (right); leaves sit
+    // at WP2 .. 2*WP2-1. WINDOW is padded up to a power of two with VAL_MIN
+    // leaves. A padded leaf is to the right of every real leaf and never
+    // strictly beats one, so it cannot win even when every real logit equals
+    // VAL_MIN (the left side takes the tie).
+    localparam int unsigned WP2 = 1 << $clog2(WINDOW);
+
+    // Most negative representable value, so the first window always wins.
+    localparam logic signed [LOGIT_W-1:0] VAL_MIN = {1'b1, {(LOGIT_W-1){1'b0}}};
+
     logic signed [LOGIT_W-1:0] win_val;
     logic        [IDX_W-1:0]   win_idx;
 
+    logic signed [LOGIT_W-1:0] tv [2*WP2];
+    logic        [IDX_W-1:0]   ti [2*WP2];
+
     always_comb begin
-        win_val = eff[0];
-        win_idx = '0;
-        for (int unsigned k = 1; k < WINDOW; k++) begin
-            if (eff[k] > win_val) begin
-                win_val = eff[k];
-                win_idx = IDX_W'(k);
+        tv[0] = '0;
+        ti[0] = '0;
+        for (int unsigned k = 0; k < WP2; k++) begin
+            tv[WP2 + k] = (k < WINDOW) ? eff[(k < WINDOW) ? k : 0] : VAL_MIN;
+            ti[WP2 + k] = IDX_W'(k);
+        end
+        // Signed loop variable: with WP2 == 1 there are no internal nodes and
+        // an unsigned "n >= 1" countdown would wrap.
+        for (int n = int'(WP2) - 1; n >= 1; n--) begin
+            if (tv[2*n + 1] > tv[2*n]) begin
+                tv[n] = tv[2*n + 1];
+                ti[n] = ti[2*n + 1];
+            end
+            else begin
+                tv[n] = tv[2*n];
+                ti[n] = ti[2*n];
             end
         end
+        win_val = tv[1];
+        win_idx = ti[1];
     end
 
     // ---- running maximum across windows -------------------------------------
@@ -144,8 +180,7 @@ module nce_neural_gen_loop #(
     logic        [TOKEN_W-1:0] best_tok_q;
     logic                      armed_q;
 
-    // Most negative representable value, so the first window always wins.
-    localparam logic signed [LOGIT_W-1:0] VAL_MIN = {1'b1, {(LOGIT_W-1){1'b0}}};
+    // VAL_MIN is declared above, with the comparator tree that also uses it.
 
     always_ff @(posedge clk_i or negedge rst_ni) begin
         if (!rst_ni) begin

@@ -7,7 +7,7 @@
     "dir::../../src/tt_um_nce_neural_engine.sv"
   ],
   "CLOCK_PORT": "clk",
-  "CLOCK_PERIOD": 30.0,
+  "CLOCK_PERIOD": 35.0,
   "PDK": "sky130A",
   "STD_CELL_LIBRARY": "sky130_fd_sc_hd",
   "FP_SIZING": "absolute",

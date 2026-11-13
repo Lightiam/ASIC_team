@@ -83,7 +83,7 @@ every read returns nothing and the chip looks dead when it is fine.
 `ena` is driven by that multiplexer, not by you — it goes high once the design
 is powered and selected. There is nothing to hold.
 
-Then apply `clk` at 33.33 MHz and release `rst_n`.
+Then apply `clk` at 28.57 MHz and release `rst_n`.
 
 **Load the address pointer** — drive the address on `ui_in`, raise
 `strobe` and `addr_load` together for one clock. `addr_load` takes priority

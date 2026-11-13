@@ -1,0 +1,53 @@
+# Area estimate for one SIMD8 MAC tile, to size an MPW die.
+#
+# NOT a substitute for place-and-route. Synthesis area excludes routing,
+# fill, the I/O ring and any macro, so it is a FLOOR and the real die is
+# larger. Used only to decide whether a 15 mm2 chipIgnite die is
+# comfortable or tight for this design.
+
+read_verilog -sv rtl/pkg/nce_pkg.sv
+read_verilog -sv rtl/core/nce_bf16_dot2_mac_lane.sv
+read_verilog -sv rtl/core/nce_bf16_dot2_to_fp32.sv
+read_verilog -sv rtl/core/nce_bf16_mac_lane.sv
+read_verilog -sv rtl/core/nce_bf16_mul_to_fp32.sv
+read_verilog -sv rtl/core/nce_bf16_simd8_mac.sv
+read_verilog -sv rtl/core/nce_bf24_mac_lane.sv
+read_verilog -sv rtl/core/nce_bf24_mul_to_fp32.sv
+read_verilog -sv rtl/core/nce_conv3x3_valid_4x4_int8.sv
+read_verilog -sv rtl/core/nce_conv3x3_valid_4x4_int8_controller.sv
+read_verilog -sv rtl/core/nce_fp32_accumulator.sv
+read_verilog -sv rtl/core/nce_fp32_add.sv
+read_verilog -sv rtl/core/nce_fp32_add_special.sv
+read_verilog -sv rtl/core/nce_fp32_addsub_raw.sv
+read_verilog -sv rtl/core/nce_fp32_align.sv
+read_verilog -sv rtl/core/nce_fp32_decode.sv
+read_verilog -sv rtl/core/nce_fp32_normalize.sv
+read_verilog -sv rtl/core/nce_fp32_round_pack.sv
+read_verilog -sv rtl/core/nce_gemm_command_core.sv
+read_verilog -sv rtl/core/nce_int18_to_fp32.sv
+read_verilog -sv rtl/core/nce_int8_command_core.sv
+read_verilog -sv rtl/core/nce_int8_dot4.sv
+read_verilog -sv rtl/core/nce_int8_dot4_fp32.sv
+read_verilog -sv rtl/core/nce_int8_mac_lane.sv
+read_verilog -sv rtl/core/nce_int8_register_mac_core.sv
+read_verilog -sv rtl/core/nce_int8_simd8_mac.sv
+read_verilog -sv rtl/core/nce_mixed_precision_command_core.sv
+read_verilog -sv rtl/core/nce_mixed_precision_mac_lane.sv
+read_verilog -sv rtl/core/nce_mixed_precision_register_mac_core.sv
+read_verilog -sv rtl/core/nce_mixed_precision_simd8_mac.sv
+read_verilog -sv rtl/core/nce_shared_systolic_gemm_4x4.sv
+read_verilog -sv rtl/core/nce_systolic_array_2x2.sv
+read_verilog -sv rtl/core/nce_systolic_array_4x4.sv
+read_verilog -sv rtl/core/nce_systolic_gemm_4x4.sv
+read_verilog -sv rtl/core/nce_systolic_pe.sv
+read_verilog -sv rtl/core/nce_tensor_gemm_execution.sv
+read_verilog -sv rtl/core/nce_tensor_gemm_shared_client.sv
+read_verilog -sv rtl/core/nce_tiled_gemm_8x8.sv
+read_verilog -sv rtl/core/nce_tiled_gemm_8x8_controller.sv
+read_verilog -sv rtl/core/nce_tiled_gemm_client_mux.sv
+
+hierarchy -top nce_int8_simd8_mac
+synth -top nce_int8_simd8_mac
+dfflibmap -liberty /foss/pdks/sky130A/libs.ref/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib
+abc -liberty /foss/pdks/sky130A/libs.ref/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib
+stat -liberty /foss/pdks/sky130A/libs.ref/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib

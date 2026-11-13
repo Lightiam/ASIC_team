@@ -17,8 +17,8 @@
 
   "//": "CLOCK_PERIOD - Increase this in case you are getting setup time violations.",
   "//": "The value is in nanoseconds, so 20ns == 50MHz.",
-  "//": "30ns == 33.33 MHz, matching clock_hz: 33333333 in info.yaml.",
-  "CLOCK_PERIOD": 30,
+  "//": "35ns == 28.57 MHz, matching clock_hz: 28571428 in info.yaml. At 30ns setup failed by 2.639ns at max_ss_100C_1v60; 33ns closes with +0.927ns, so 35ns leaves margin.",
+  "CLOCK_PERIOD": 35,
 
   "//": "Hold slack margin - Increase them in case you are getting hold violations.",
   "PL_RESIZER_HOLD_SLACK_MARGIN": 0.1,

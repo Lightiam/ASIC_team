@@ -6,10 +6,17 @@
 // the data is integer, so the Layer 12 ring reduction is associative and the
 // result does not depend on ring position.
 //
-// Pipeline: one cycle. The exponent scan and the per-lane barrel shift are
-// both combinational; the register sits on the outputs.
+// Pipeline: TWO cycles.
 //
-//   exponent scan (max)  ->  per-lane align (>> delta)  ->  register
+//   stage 1:  exponent scan (max over 8 lanes)  ->  register
+//   stage 2:  per-lane align (>> delta)         ->  register
+//
+// It was one cycle, with the scan and the shift sharing a single
+// combinational path into one register. Hardening measured that path at
+// -2.286 ns at max_ss_100C_1v60 and it was the only violating path in the
+// cluster once the I/O constraints were made realistic, so the reduction and
+// the shift were separated. Stage 1 carries the 256-bit block forward
+// because abfp_align() consumes each lane's whole FP32 word.
 //
 // Lanes that are zero, subnormal, Inf or NaN contribute a zero mantissa and
 // raise their flag, so the reduction stays well defined and the condition is
@@ -69,17 +76,70 @@ module nce_abfp_align (
             if (lane_norm[k] && (lane_exp[k] > exp_max)) exp_max = lane_exp[k];
     end
 
-    // ---- per-lane alignment --------------------------------------------------
-    logic signed [MW-1:0] aligned [BLOCK];
-    logic [BLOCK-1:0]     subnorm_bits;
-    logic [BLOCK-1:0]     infnan_bits;
+    // ---- per-lane classification ---------------------------------------------
+    // These depend only on each lane's own word, not on exp_max, so they
+    // belong in stage 1 beside the scan rather than behind it.
+    logic [BLOCK-1:0] subnorm_bits;
+    logic [BLOCK-1:0] infnan_bits;
 
     always_comb begin
         for (int unsigned k = 0; k < BLOCK; k++) begin
             subnorm_bits[k] = nce_abfp_pkg::fp32_is_subnormal(block_i[32*k +: 32]);
             infnan_bits[k]  = nce_abfp_pkg::fp32_is_inf_nan(block_i[32*k +: 32]);
-            aligned[k]      = nce_abfp_pkg::abfp_align(block_i[32*k +: 32], exp_max);
         end
+    end
+
+    // ---- STAGE 1 / STAGE 2 BOUNDARY ------------------------------------------
+    // Originally the exponent scan and the mantissa alignment were one
+    // combinational block feeding one register, so the path from block_i ran
+    // through an 8-lane maximum reduction AND a variable shift before meeting
+    // a flop. Hardening measured that path at -2.286 ns at max_ss_100C_1v60
+    // once the I/O constraints were made realistic, and it was the only
+    // violating path left.
+    //
+    // The reduction is now registered and the shift happens in stage 2.
+    //
+    // COST. Stage 2 still needs each lane's full FP32 word, because
+    // abfp_align() works on the word and not on anything stage 1 derives, so
+    // the 256-bit block is carried across the boundary. That is 256 flops
+    // bought to shorten a path. The alternative -- recomputing sign and
+    // mantissa in stage 1 and carrying those instead -- saves nothing, since
+    // sign plus 23-bit mantissa plus the exponent is the whole word again.
+    //
+    // LATENCY. valid_i to valid_o is now TWO cycles, not one. The ALU behind
+    // this block is latency-insensitive and keyed off valid, so nothing
+    // downstream needed changing, but the testbench did.
+    logic                s1_valid;
+    logic [8*32-1:0]     s1_block;
+    logic [7:0]          s1_exp_max;
+    logic [BLOCK-1:0]    s1_subnorm;
+    logic [BLOCK-1:0]    s1_infnan;
+
+    always_ff @(posedge clk_i or negedge rst_ni) begin
+        if (!rst_ni) begin
+            s1_valid   <= 1'b0;
+            s1_block   <= '0;
+            s1_exp_max <= 8'h00;
+            s1_subnorm <= '0;
+            s1_infnan  <= '0;
+        end
+        else begin
+            s1_valid <= valid_i;
+            if (valid_i) begin
+                s1_block   <= block_i;
+                s1_exp_max <= exp_max;
+                s1_subnorm <= subnorm_bits;
+                s1_infnan  <= infnan_bits;
+            end
+        end
+    end
+
+    // ---- stage 2: per-lane alignment -----------------------------------------
+    logic signed [MW-1:0] aligned [BLOCK];
+
+    always_comb begin
+        for (int unsigned k = 0; k < BLOCK; k++)
+            aligned[k] = nce_abfp_pkg::abfp_align(s1_block[32*k +: 32], s1_exp_max);
     end
 
     always_ff @(posedge clk_i or negedge rst_ni) begin
@@ -91,11 +151,11 @@ module nce_abfp_align (
             inf_nan_o   <= '0;
         end
         else begin
-            valid_o <= valid_i;
-            if (valid_i) begin
-                block_exp_o <= exp_max;
-                subnormal_o <= subnorm_bits;
-                inf_nan_o   <= infnan_bits;
+            valid_o <= s1_valid;
+            if (s1_valid) begin
+                block_exp_o <= s1_exp_max;
+                subnormal_o <= s1_subnorm;
+                inf_nan_o   <= s1_infnan;
                 for (int unsigned k = 0; k < BLOCK; k++)
                     mantissa_o[MW*k +: MW] <= aligned[k];
             end

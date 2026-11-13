@@ -5,7 +5,7 @@ project:
   discord:      ""
   description:  "High-Efficiency INT8 Dot-Product Accelerator with INT32/FP32 Accumulation and Direct-Strobed Register Port"
   language:     "SystemVerilog"
-  clock_hz:     33333333
+  clock_hz:     28571428
 
 # How many tiles your design occupies? A single tile is about 167x108 uM.
   tiles: "3x2"

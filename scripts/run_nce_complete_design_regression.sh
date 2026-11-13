@@ -93,6 +93,7 @@ SUITES=(
     run_nce_core_cluster.sh
     run_stack_layers.sh
     run_photonics.sh
+    run_gap_fixes.sh
 )
 
 suite_timeout() {

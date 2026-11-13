@@ -208,7 +208,7 @@ load-bearing for the whole value proposition. Two honest options:
 
 Either is defensible. Leaving the deck as-is is not.
 
-### 2. Rename Layer 21 or implement it
+### 2. Rename Layer 21 or implement it -- DONE (both)
 
 "Holographic Unified Memory Pooling" has **zero occurrences** in the
 repository. `MemoryMap` is tenant partitioning. Either rename the layer to
@@ -275,3 +275,35 @@ The finding is narrower and sharper: **the repository is an excellent
 digital and analytical codebase describing a photonic machine that does not
 yet exist in it.** Every optical claim in the deck is currently backed by a
 calculation, not by a device or a driver.
+
+---
+
+# Update: four gaps closed
+
+| layer | module | result |
+|---|---|---|
+| 1 | `models/l1_diamond_thermal.py` | silicon **115.86 C** vs diamond **78.84 C** peak junction; 10 physics checks |
+| 2 | `rtl/link/nce_serdes_200g_stub.sv` | Gray PAM4 + CDR, 16 checks. **Carries no bandwidth** |
+| 20 | `sw/shim/lrai_transport_loopback.py` | opt-in only, 28 checks |
+| 21 | `sw/fabric/l21_memory_pool.py` | O(1) resolution, 15 checks |
+
+Regression is now **73 suites**.
+
+Three things these do NOT change:
+
+**The 6000x bandwidth gap stands.** A behavioural SerDes stub exercises the
+digital protocol; it is not a PHY and nothing synthesised from it carries
+200 Gbps.
+
+**Layer 20 still reports zero devices by default.** The C++ shim's
+`kHaveTransport` is untouched. The loopback is inert unless
+`LIGHTRAIL_EMULATE=1`, and identifies as `NCEE`.
+
+**Layer 21 is not a coherence protocol.** It resolves where a page lives,
+which is the easy half. It refuses a write from a non-owner rather than
+pretending to the hard half.
+
+The word "holographic" is still absent, deliberately. Nothing in the design
+is holographic -- there is no volumetric storage, no interference encoding
+and no optical medium holding state. The layer is built; the word is not
+used.

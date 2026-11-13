@@ -23,8 +23,8 @@ import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles, RisingEdge, Timer
 
-# 33.333 MHz, matching clock_hz in info.yaml
-CLK_PERIOD_NS = 30
+# 28.571 MHz, matching clock_hz in info.yaml
+CLK_PERIOD_NS = 35
 
 # Every transfer is followed by one idle clock, and outputs are sampled
 # SETTLE_NS into that idle clock. At RTL this is only cosmetic, but the

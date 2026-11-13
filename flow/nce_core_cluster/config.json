@@ -1,0 +1,33 @@
+{
+  "//": "LibreLane hardening of the stack-layer core cluster (Layers 8, 9, 12 + token select).",
+  "DESIGN_NAME": "nce_core_cluster",
+  "VERILOG_FILES": [
+    "dir::../../rtl/ternary/nce_ternary_pkg.sv",
+    "dir::../../rtl/ternary/nce_ternary_dot16.sv",
+    "dir::../../rtl/spiking/nce_lif_dispatcher.sv",
+    "dir::../../rtl/collective/nce_abfp_pkg.sv",
+    "dir::../../rtl/collective/nce_abfp_align.sv",
+    "dir::../../rtl/collective/nce_collective_alu.sv",
+    "dir::../../rtl/gen/nce_neural_gen_loop.sv",
+    "dir::../../rtl/top/nce_core_cluster.sv"
+  ],
+  "CLOCK_PORT": "clk_i",
+  "CLOCK_PERIOD": 30.0,
+  "PDK": "sky130A",
+  "STD_CELL_LIBRARY": "sky130_fd_sc_hd",
+  "FP_CORE_UTIL": 40,
+  "PL_TARGET_DENSITY_PCT": 55,
+  "GRT_ALLOW_CONGESTION": true,
+  "RUN_LINTER": true,
+  "RUN_MAGIC_DRC": true,
+  "RUN_KLAYOUT_DRC": true,
+  "RUN_NETGEN_LVS": true,
+  "RSZ_CORNERS": [
+    "nom_tt_025C_1v80",
+    "nom_ss_100C_1v60",
+    "nom_ff_n40C_1v95"
+  ],
+  "//sdc": "Both PNR and SIGNOFF are set explicitly. Setting only one leaves the other on librelane/scripts/base.sdc, whose 6 ns input and output delays are the thing being tested -- the final metrics would then still carry the defaults and the comparison against cluster2 would measure nothing.",
+  "PNR_SDC_FILE": "dir::cluster.sdc",
+  "SIGNOFF_SDC_FILE": "dir::cluster.sdc"
+}

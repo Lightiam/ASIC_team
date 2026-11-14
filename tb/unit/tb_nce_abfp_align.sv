@@ -18,6 +18,8 @@
 //      property Layer 13 relies on.
 //   4. An Inf lane is flagged, does not set the block scale, and does not
 //      flush the finite lanes.
+//   5. The block exponent equals a plain maximum over the normal lanes, for
+//      random blocks that mix in zero, subnormal, Inf and NaN exponents.
 // -----------------------------------------------------------------------------
 
 `timescale 1ns/1ps
@@ -125,6 +127,8 @@ module tb_nce_abfp_align;
         logic signed [31:0]   s_fwd, s_rev, s_shuf;
         logic signed [MW-1:0] got;
         logic [BLOCK*32-1:0]  blk;
+        logic [7:0]           ev;
+        logic [7:0]           ref_exp;
 
         valid_i = 1'b0;
         block_i = '0;
@@ -204,6 +208,31 @@ module tb_nce_abfp_align;
                 sum_perm(PERM_FWD) !== sum_perm(PERM_SHUF)) begin
                 errors++;
                 $display("FAIL [random-order] iteration %0d", n);
+            end
+        end
+
+        // ---- 6. block exponent against a plain reference --------------------
+        // The DUT's exponent scan is a balanced tree. Section 5 only checks the
+        // sum's order independence, so compare block_exp_o directly with a
+        // straightforward maximum over the normal lanes. A lane is normal when
+        // its exponent is neither 0x00 (zero or subnormal) nor 0xFF (Inf/NaN).
+        for (int unsigned n = 0; n < 2000; n++) begin
+            ref_exp = 8'h00;
+            for (int unsigned k = 0; k < BLOCK; k++) begin
+                case ($urandom_range(0, 5))
+                    0:       ev = 8'h00;
+                    1:       ev = 8'hFF;
+                    default: ev = 8'($urandom_range(0, 255));
+                endcase
+                blk[32*k +: 32] = {1'($urandom_range(0, 1)), ev,
+                                   23'($urandom_range(0, 8388607))};
+                if (ev != 8'h00 && ev != 8'hFF && ev > ref_exp) ref_exp = ev;
+            end
+            drive (blk);
+            if (block_exp_o !== ref_exp) begin
+                errors++;
+                $display("FAIL [exp-ref] iteration %0d: got %0d expected %0d",
+                         n, block_exp_o, ref_exp);
             end
         end
 

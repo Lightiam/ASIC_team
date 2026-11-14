@@ -54,9 +54,30 @@ module nce_abfp_align (
     // The block exponent is the largest exponent among lanes that carry a
     // normal, finite value. Inf/NaN are excluded so one bad lane cannot drag
     // the whole block's scale to 255 and flush every other lane to zero.
+    //
+    // This used to be a serial loop, "if (lane_norm[k] && lane_exp[k] > exp_max)
+    // exp_max = lane_exp[k]", which synthesises to a chain of BLOCK compare-and-
+    // select stages: lane k's value waits behind every stage after it, so lane 0
+    // passes through all BLOCK of them. In one hardening run of nce_core_cluster
+    // the worst setup slack from each lane's exponent MSB to this register rose
+    // by about 3.6 ns per lane, from -2.20 ns at lane 0 to +23.23 ns at lane 7,
+    // and lane 0 was the worst path left. Synthesis keeps the order of a
+    // priority chain because reordering it could change the result; a tree has
+    // to be written as a tree.
+    //
+    // Only the VALUE is wanted, not which lane supplied it, so there is no
+    // tie-break to preserve. A lane that is not normal (zero, subnormal, Inf or
+    // NaN) contributes 0, which is what the old loop's initial value did, and
+    // every normal exponent is 1..254, so the result is unchanged:
+    //     exp_max = max over lanes of (lane_norm ? lane_exp : 0)
+    // The tree is heap-indexed: node n has children 2n and 2n+1, and the leaves
+    // sit at BP2 .. 2*BP2-1, padded with 0 up to a power of two.
+    localparam int unsigned BP2 = 1 << $clog2(BLOCK);
+
     logic [7:0] exp_max;
     logic [7:0] lane_exp  [BLOCK];
     logic       lane_norm [BLOCK];
+    logic [7:0] tmax      [2*BP2];
 
     // Note: no variable is declared inside these loop bodies. A `logic`
     // declared in a for-loop body inside an always_comb is not handled
@@ -71,9 +92,16 @@ module nce_abfp_align (
                         && !nce_abfp_pkg::fp32_is_inf_nan(block_i[32*k +: 32]);
         end
 
-        exp_max = 8'h00;
-        for (int unsigned k = 0; k < BLOCK; k++)
-            if (lane_norm[k] && (lane_exp[k] > exp_max)) exp_max = lane_exp[k];
+        // Masked leaves, padded with 0 up to a power of two.
+        tmax[0] = 8'h00;
+        for (int unsigned k = 0; k < BP2; k++)
+            tmax[BP2 + k] = (k < BLOCK && lane_norm[(k < BLOCK) ? k : 0])
+                          ? lane_exp[(k < BLOCK) ? k : 0] : 8'h00;
+        // Signed loop variable: with BP2 == 1 there are no internal nodes and
+        // an unsigned "n >= 1" countdown would wrap.
+        for (int n = int'(BP2) - 1; n >= 1; n--)
+            tmax[n] = (tmax[2*n + 1] > tmax[2*n]) ? tmax[2*n + 1] : tmax[2*n];
+        exp_max = tmax[1];
     end
 
     // ---- per-lane classification ---------------------------------------------
